@@ -1,0 +1,5 @@
+numpy
+pandas
+mne
+# pyro
+tvb-library
