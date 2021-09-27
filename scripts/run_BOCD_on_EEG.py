@@ -10,8 +10,8 @@ import msc
 # get command line arguments
 # todo: add channel pick
 parser = argparse.ArgumentParser(description="Run BOCD with EEG Data")
-parser.add_argument('-i', '--input', help="input filepath. Nicolete EEG", required=False, type=str,
-                    default=r'../input/raw_eeg/8010200_0006.data')
+parser.add_argument('-i', '--input', help="input filepath pointing to a Nicolete EEG .data", required=False, type=str,
+                    default=r'input/raw_eeg/8010200_0006.data')
 parser.add_argument('-o', '--output', help="output base path", required=False, type=str, default='output')
 args = vars(parser.parse_args())
 
