@@ -3,3 +3,4 @@ pandas
 mne
 # pyro
 tvb-library
+pyqt5

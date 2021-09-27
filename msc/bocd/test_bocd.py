@@ -1,4 +1,5 @@
 """Unit tests for BOCD.
+David Tolpin
 """
 
 import pytest
@@ -6,7 +7,7 @@ import numpy
 import numpy.random
 import numpy.linalg
 from functools import partial
-from bocd import BOCD, StudentT, constant_hazard
+from msc.bocd.bocd import BOCD, StudentT, constant_hazard
 
 LAMBDA = 100
 ALPHA = 0.1
