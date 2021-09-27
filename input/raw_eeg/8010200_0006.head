@@ -1,0 +1,11 @@
+start_ts=2009-3-10 4:57:28.000
+sample_freq=512
+num_samples=345810
+num_channels=35
+conversion_factor=0.01220703125
+elec_names=[FP1,AF7,FP2,F7,F3,FZ,F4,F8,T7,C3,CZ,C4,T8,P7,P3,PZ,P4,P8,O1,AF8,O2,F9,F10,T9,T10,FT7,FT8,FT9,FT10,TP7,TP8,MT1+,MT2+,EOG+,ECG]
+pat_id=800
+adm_id=80100
+rec_id=8010200
+duration_in_sec=675.41015625
+sample_bytes=4
