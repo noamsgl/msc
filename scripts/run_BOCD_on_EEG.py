@@ -18,13 +18,15 @@ parser.add_argument('-t', '--test', help="toggle test mode", required=False, typ
 
 args = vars(parser.parse_args())
 
-print(f"running {sys.argv[0]} with test={args['test']}, limit={args['limit']}")
-
 # extract arguments
 output_path = args['output']
 raw_path = args['input']
 test = args['test']
 limit = args['limit']
+
+argv0 = sys.argv[0]
+print(f"running {argv0} with test={test}, limit={limit}")
+
 
 # constants
 CHANNELS = ['FP1', 'AF7', 'FP2', 'F7', 'F3', 'FZ', 'F4', 'F8', 'T7', 'C3',
