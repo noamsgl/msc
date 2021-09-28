@@ -5,6 +5,7 @@
 
 # %%
 
+import os
 import numpy
 import numpy.random
 import numpy.linalg
@@ -51,10 +52,13 @@ def get_BOCD_changepoints(series, verbose=True):
     return changepoints
 
 
-def plot_BOCD_changepoints(data, changepoints, output_path: Optional[str] = None, channel_name: Optional[str] = '?'):
-    sns.lineplot(data=data, label=f"EEG[{channel_name}]", title="Bayesian Online Changepoint Detection on EEG")
+def plot_BOCD_changepoints(data, changepoints, sfreq, output_path: Optional[str] = None, channel_name: Optional[str] = '?'):
+    sns.lineplot(data=data, label=f"EEG[{channel_name}]")
     sns.scatterplot(x=changepoints, y=[0] * len(changepoints), color='orange', zorder=3, label="BOCD changepoints")
+    plt.title("Bayesian Online Changepoint Detection on EEG")
+    plt.xlabel(f"sample number, sfreq={sfreq}")
     if output_path:
-        plt.savefig(output_path)
+        plt.savefig(os.path.join(output_path, f"{channel_name}_bocd.png"))
     else:
         plt.show()
+    plt.clf()
