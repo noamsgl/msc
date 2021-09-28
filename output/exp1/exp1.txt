@@ -1,0 +1,2 @@
+name: Experiment 1
+description: apply BOCD to single channel segments of raw EEG
