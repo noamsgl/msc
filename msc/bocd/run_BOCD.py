@@ -62,3 +62,20 @@ def plot_BOCD_changepoints(data, changepoints, sfreq, output_path: Optional[str]
     else:
         plt.show()
     plt.clf()
+
+def plot_BOCD_changepoints_and_seizure(data, changepoints, sfreq, onset, offset, output_path: Optional[str] = None,
+                           channel_name: Optional[str] = '?'):
+    sns.lineplot(data=data, label=f"EEG[{channel_name}]")
+    sns.scatterplot(x=changepoints, y=[0] * len(changepoints), color='orange', zorder=3, label="BOCD changepoints")
+    plt.title("Bayesian Online Changepoint Detection on EEG")
+    plt.xlabel(f"sample number, sfreq={sfreq}")
+
+    # add onset, offset
+    plt.plot(onset*sfreq, 0, label='onset')
+    plt.plot(offset*sfreq, 0, label='offset')
+
+    if output_path:
+        plt.savefig(os.path.join(output_path, f"{channel_name}_bocd.png"))
+    else:
+        plt.show()
+    plt.clf()
