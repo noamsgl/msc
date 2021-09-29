@@ -9,7 +9,7 @@
 
 | id | Date      | Code                               | Results                | Description  |
 |----|-----------|------------------------------------|------------------------|--------------|
-| 1  | 28/9/2021 | [link](scripts/run_BOCD_on_EEG.py) | [link](notebooks/exp1) | Apply vanilla BOCD to 60s raw non-seizure EEG|
+| 1  | 28/9/2021 | [link](scripts/run_BOCD_on_EEG.py) | [link](notebooks/exp1) | Apply vanilla BOCD to 30/60s raw non-seizure EEG|
 
 [comment]: <> (|    |           |                                    |                        |              |)
 
