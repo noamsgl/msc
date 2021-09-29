@@ -141,4 +141,8 @@ matlab/
 output/*
 !output/exp1/
 input/*
+
+######## data ########
+!input/raw_eeg/8010200_0006.data
+!input/raw_eeg/8010200_0006.head
 #### END MSC GITIGNORE ####
