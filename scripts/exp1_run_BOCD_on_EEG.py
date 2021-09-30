@@ -57,7 +57,8 @@ for channel in CHANNELS:
     print(f"beginning bocd on channel {channel}, limit {limit}")
     chn_output_path = os.path.join(output_path, str(limit), channel)
     os.makedirs(chn_output_path, exist_ok=True)
-    data = raw.get_data(channel)
+    data = raw.get_data(channel).squeeze()
+
 
     changepoints = msc.bocd.get_BOCD_changepoints(data)
     # print to file

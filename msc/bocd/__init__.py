@@ -1,1 +1,1 @@
-from .run_BOCD import get_BOCD_changepoints, plot_BOCD_changepoints, synthetic_data
+from .run_BOCD import get_BOCD_changepoints, plot_BOCD_changepoints, plot_BOCD_changepoints_and_seizure, synthetic_data

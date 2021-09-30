@@ -19,7 +19,7 @@ parser.add_argument('-off', '--offset', help="seizure offset time (relative to f
                     type=int, default=439)
 parser.add_argument('-o', '--output', help="output base path", required=False, type=str, default='output/exp2')
 parser.add_argument('-m', '--margin', help="margin data to take around seizure in %percent", required=False, type=int,
-                    default=30)
+                    default=15)
 parser.add_argument('-p', '--picks', help="channel picks", nargs='+', required=False, type=str,
                     default=['all'])
 
@@ -54,6 +54,7 @@ if extension == '.data':
     absolute_margin = (margin/100) * seizure_length
     raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True).crop(onset - absolute_margin,
                                                                               offset + absolute_margin)
+    sfreq = raw.info['sfreq']
     df = raw.to_data_frame()
 
 else:
@@ -64,8 +65,7 @@ for channel in CHANNELS:
     print(f"beginning bocd on channel {channel}, margin {margin}% around seizure")
     chn_output_path = os.path.join(output_path, str(margin), channel)
     os.makedirs(chn_output_path, exist_ok=True)
-    data = raw.get_data(channel)
-
+    data = raw.get_data(channel).squeeze()
     changepoints = msc.bocd.get_BOCD_changepoints(data)
 
     # print results to file
@@ -75,4 +75,4 @@ for channel in CHANNELS:
         f.write(str(changepoints))
 
     # plot changepoints and save in chn_output_path as png
-    msc.bocd.plot_BOCD_changepoints_and_seizure(data, changepoints, raw.info["sfreq"], onset, offset, chn_output_path, channel)
+    msc.bocd.plot_BOCD_changepoints_and_seizure(data, changepoints, sfreq, absolute_margin*sfreq, (absolute_margin + seizure_length)*sfreq, chn_output_path, channel)
