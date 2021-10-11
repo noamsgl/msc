@@ -24,5 +24,5 @@ echo -e "SLURM_JOB_NODELIST:\t" $SLURM_JOB_NODELIST "\n\n"
 ### Start your code below ####
 module load anaconda				### load anaconda module (must be present when working with conda environments)
 source activate msc				### activate a conda environment, replace my_env with your conda environment
-python scripts/exp2_run_BOCD_on_seizure_EEG.py -m 30	### execute python script – replace with your own command 
+python scripts/exp2_run_BOCD_on_seizure_EEG.py -m 50	### execute python script – replace with your own command 
 
