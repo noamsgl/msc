@@ -139,10 +139,11 @@ docs/
 notebooks/tutorials/
 matlab/
 output/*
-!output/exp1/
+#output/exp1/
 input/*
 
-######## data ########
+######## do include some data ########
 !input/raw_eeg/8010200_0006.data
 !input/raw_eeg/8010200_0006.head
+
 #### END MSC GITIGNORE ####
