@@ -1,0 +1,23 @@
+[requires]
+python_version = "3.8"
+
+[[source]]
+url = 'https://pypi.python.org/simple'
+verify_ssl = true
+name = 'pypi'
+
+
+[packages]
+jupyter = "*"
+numpy = "*"
+pandas = "*"
+mne = "*"
+matplotlib = "*"
+tqdm = "*"
+seaborn = "*"
+pytest = "*"
+# gluonts = "*"
+# pytorchts = "*"
+# pyro
+# tvb-library
+# pyqt5
