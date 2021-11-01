@@ -4,6 +4,7 @@ from typing import List, Tuple
 import mne
 import os
 
+import torch
 from mne.io import Raw
 
 __ALL_CHANNELS__ = ('FP1', 'FP2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6',
@@ -15,8 +16,7 @@ __COMMON_CHANNELS__ = (
     'T7', 'T8', 'P7', 'P8')
 __FPATH__ = r'C:\temp\surf30\pat_103002\adm_1030102\rec_103001102\103001102_0113.data'
 
-__CROP__ = 60
-
+__CROP__ = 10
 
 @dataclass
 class PicksOptions:
@@ -60,6 +60,6 @@ def load_raw_data(fpath: str = __FPATH__, crop: int = __CROP__, picks: Tuple[str
 def load_tensor_dataset(fpath: str = __FPATH__, crop: int = __CROP__, picks: Tuple[str] = __PICKS__):
     raw: Raw = load_raw_data(fpath, crop, picks)
     data, times, = raw.get_data(return_times=True)
-    dataset = {"x_train": times,
-               "y_train": data}
+    dataset = {"train_x": torch.Tensor(times),
+               "train_y": torch.Tensor(data).T}
     return dataset
