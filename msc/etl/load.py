@@ -43,7 +43,8 @@ def load_raw_data(fpath: str = __FPATH__, crop: int = __CROP__, picks: Tuple[str
     Returns:
         Tensor: test data
     """
-    print(f"picks: {picks}")
+    if picks:
+        print(f"picks: {picks}")
     extension = os.path.splitext(fpath)[1]
     preload = False
     if extension == '.data':
