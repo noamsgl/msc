@@ -18,8 +18,10 @@ __COMMON_CHANNELS__ = (
 
 __FPATH__ = r'C:\temp\surf30\pat_103002\adm_1030102\rec_103001102\103001102_0113.data'
 
-__LFREQ__ = 0.5  # low frequency for highpass filter
-__HFREQ__ = 5  # high frequency for lowpass filter
+# __LFREQ__ = 0.5  # low frequency for highpass filter
+# __HFREQ__ = 5  # high frequency for lowpass filter
+__LFREQ__ = None  # low frequency for highpass filter
+__HFREQ__ = None  # high frequency for lowpass filter
 __CROP__ = 10  # segment length measured in seconds
 __TRAIN_LENGTH__ = 10  # segment length measured in seconds
 __TEST_LENGTH__ = 2  # segment length measured in seconds
