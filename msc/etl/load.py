@@ -72,6 +72,8 @@ def load_tensor_dataset(fpath: str = __FPATH__, train_length: int = __TRAIN_LENG
     raw: Raw = load_raw_data(fpath, __TRAIN_LENGTH__ + __TEST_LENGTH__, picks)
     data, times = raw.get_data(return_times=True)
 
+    data = (data - np.mean(data))/np.std(data)
+
     split_index = np.argmax(times > __TRAIN_LENGTH__)
 
     dataset = {"train_x": torch.Tensor(times[:split_index]),
