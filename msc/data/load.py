@@ -1,16 +1,15 @@
+import os
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import Tuple
 
 import mne
-import os
-
 import numpy as np
 import torch
 from mne.io import Raw
 
 ALL_CHANNELS = ('FP1', 'FP2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6',
-                    'FZ', 'CZ', 'PZ', 'SP1', 'SP2', 'RS', 'T1', 'T2', 'EOG1', 'EOG2', 'EMG', 'ECG', 'PHO', 'CP1', 'CP2',
-                    'CP5', 'CP6', 'PO1', 'PO2', 'PO5', 'PO6')
+                'FZ', 'CZ', 'PZ', 'SP1', 'SP2', 'RS', 'T1', 'T2', 'EOG1', 'EOG2', 'EMG', 'ECG', 'PHO', 'CP1', 'CP2',
+                'CP5', 'CP6', 'PO1', 'PO2', 'PO5', 'PO6')
 
 COMMON_CHANNELS = (
     'FP1', 'FP2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6', 'FZ', 'CZ', 'PZ',
@@ -41,7 +40,7 @@ class PicksOptions:
 PICKS = PicksOptions.one_channel
 
 
-def load_raw_data(fpath: str = FPATH, crop: int = CROP, picks: Tuple[str] = PICKS):
+def load_raw_data(fpath: str = FPATH, crop: int = CROP, picks: Tuple[str] = PICKS) -> Raw:
     """ get sample data for testing
 
     Args:
@@ -68,9 +67,22 @@ def load_raw_data(fpath: str = FPATH, crop: int = CROP, picks: Tuple[str] = PICK
 
 
 def load_tensor_dataset(fpath: str = FPATH, train_length: int = TRAIN_LENGTH,
-                        test_length: int = TEST_LENGTH, picks: Tuple[str] = PICKS):
+                        test_length: int = TEST_LENGTH, picks: Tuple[str] = PICKS) -> dict:
+    """ Returns a standardized dataset
+
+    Args:
+        fpath: filepath where .data and .head are located
+        train_length: time length in seconds
+        test_length: time length in seconds
+        picks: list of EEG channels to select from file
+
+    Returns: dict which includes train_x, train_y, test_x, test_y
+
+    """
     raw: Raw = load_raw_data(fpath, TRAIN_LENGTH + TEST_LENGTH, picks)
     data, times = raw.get_data(return_times=True)
+
+    data = (data - np.mean(data))/np.std(data)
 
     split_index = np.argmax(times > TRAIN_LENGTH)
 
