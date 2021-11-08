@@ -40,7 +40,7 @@ class PicksOptions:
 PICKS = PicksOptions.one_channel
 
 
-def load_raw_data(fpath: str = FPATH, crop: int = CROP, picks: Tuple[str] = PICKS) -> Raw:
+def load_raw_data(fpath: str = FPATH, crop: int = CROP, picks: Tuple[str] = PICKS, verbose: bool = False) -> Raw:
     """ get sample data for testing
 
     Args:
@@ -51,7 +51,8 @@ def load_raw_data(fpath: str = FPATH, crop: int = CROP, picks: Tuple[str] = PICK
     Returns:
         Tensor: test data
     """
-    if picks:
+    mne.set_log_level(verbose)
+    if verbose:
         print(f"picks: {picks}")
     extension = os.path.splitext(fpath)[1]
     preload = True
@@ -82,7 +83,7 @@ def load_tensor_dataset(fpath: str = FPATH, train_length: int = TRAIN_LENGTH,
     raw: Raw = load_raw_data(fpath, TRAIN_LENGTH + TEST_LENGTH, picks)
     data, times = raw.get_data(return_times=True)
 
-    data = (data - np.mean(data))/np.std(data)
+    data = (data - np.mean(data)) / np.std(data)
 
     split_index = np.argmax(times > TRAIN_LENGTH)
 
