@@ -80,12 +80,12 @@ def load_tensor_dataset(fpath: str = FPATH, train_length: int = TRAIN_LENGTH,
     Returns: dict which includes train_x, train_y, test_x, test_y
 
     """
-    raw: Raw = load_raw_data(fpath, TRAIN_LENGTH + TEST_LENGTH, picks)
+    raw: Raw = load_raw_data(fpath, train_length + test_length, picks)
     data, times = raw.get_data(return_times=True)
 
     data = (data - np.mean(data)) / np.std(data)
 
-    split_index = np.argmax(times > TRAIN_LENGTH)
+    split_index = np.argmax(times > train_length)
 
     dataset = {"train_x": torch.Tensor(times[:split_index]),
                "train_y": torch.Tensor(data[:, :split_index]).T.squeeze(),
