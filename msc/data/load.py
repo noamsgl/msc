@@ -40,7 +40,8 @@ class PicksOptions:
 PICKS = PicksOptions.one_channel
 
 
-def load_raw_data(fpath: str = FPATH, crop: int = CROP, picks: Tuple[str] = PICKS, verbose: bool = False) -> Raw:
+def load_raw_data(fpath: str = FPATH, offset: float = 0, crop: int = CROP, picks: Tuple[str] = PICKS,
+                  verbose: bool = False) -> Raw:
     """ get sample data for testing
 
     Args:
@@ -55,15 +56,16 @@ def load_raw_data(fpath: str = FPATH, crop: int = CROP, picks: Tuple[str] = PICK
     if verbose:
         print(f"picks: {picks}")
     extension = os.path.splitext(fpath)[1]
-    preload = True
     if extension == '.data':
         # file is stored in raw nicolet format
-        raw: Raw = mne.io.read_raw_nicolet(fpath, ch_type='eeg', preload=preload).pick(picks).crop(0, crop).filter(
-            l_freq=LFREQ, h_freq=HFREQ)
+        raw: Raw = mne.io.read_raw_nicolet(fpath, ch_type='eeg', preload=True)
     elif extension == ".edf":
-        raw = mne.io.read_raw_edf(fpath, picks=picks, preload=preload).crop(0, crop)
+        raw = mne.io.read_raw_edf(fpath, picks=picks, preload=True)
     else:
         raise ValueError("unknown extension. currently supports: .data, .edf")
+
+    # crop and filter raw
+    raw = raw.pick(picks).crop(offset, offset + crop).filter(l_freq=LFREQ, h_freq=HFREQ)
     return raw
 
 
@@ -80,7 +82,7 @@ def load_tensor_dataset(fpath: str = FPATH, train_length: int = TRAIN_LENGTH,
     Returns: dict which includes train_x, train_y, test_x, test_y
 
     """
-    raw: Raw = load_raw_data(fpath, train_length + test_length, picks)
+    raw: Raw = load_raw_data(fpath, 0, train_length + test_length, picks)
     data, times = raw.get_data(return_times=True)
 
     data = (data - np.mean(data)) / np.std(data)
@@ -93,3 +95,27 @@ def load_tensor_dataset(fpath: str = FPATH, train_length: int = TRAIN_LENGTH,
                "test_y": torch.Tensor(data[:, split_index:]).T.squeeze()
                }
     return dataset
+
+def get_index_from_time(t, times):
+    return np.argmax(times > t)
+
+def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, picks: Tuple[str] = PICKS):
+    raw: Raw = mne.io.read_raw_nicolet(fpath, ch_type='eeg', preload=True).pick(picks)
+    sfreq = int(raw.info['sfreq'])
+    data, times = raw.get_data(return_times=True)
+    data = (data - np.mean(data)) / np.std(data)
+
+    t_start = offset + H
+    t_stop = t_start + L
+    t_start_idx = np.argmax(times > t_start)
+    t_stop_idx = np.argmin(times < t_stop)
+
+    stepsize = int(dt * sfreq)
+    for t in times[t_start_idx:t_stop_idx:stepsize]:
+        print(f"serving dataset at time {t} seconds")
+        t_ix = get_index_from_time(t, times)
+        train_x = torch.Tensor(times[t_ix - H * sfreq:t_ix]).to(device=device)
+        train_y = torch.Tensor(data[:, t_ix - H * sfreq:t_ix]).T.squeeze().to(device=device)
+        test_x = torch.Tensor(times[t_ix:t_ix + F * sfreq]).to(device=device)
+        test_y = torch.Tensor(data[:, t_ix:t_ix + F * sfreq]).T.squeeze().to(device=device)
+        yield train_x, train_y, test_x, test_y
