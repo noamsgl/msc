@@ -7,6 +7,8 @@ import numpy as np
 import torch
 from mne.io import Raw
 
+mne.set_log_level(False)
+
 ALL_CHANNELS = ('FP1', 'FP2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6',
                 'FZ', 'CZ', 'PZ', 'SP1', 'SP2', 'RS', 'T1', 'T2', 'EOG1', 'EOG2', 'EMG', 'ECG', 'PHO', 'CP1', 'CP2',
                 'CP5', 'CP6', 'PO1', 'PO2', 'PO5', 'PO6')
@@ -114,8 +116,8 @@ def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, picks: Tuple[st
     for t in times[t_start_idx:t_stop_idx:stepsize]:
         print(f"serving dataset at time {t} seconds")
         t_ix = get_index_from_time(t, times)
-        train_x = torch.Tensor(times[t_ix - H * sfreq:t_ix]).to(device=device)
-        train_y = torch.Tensor(data[:, t_ix - H * sfreq:t_ix]).T.squeeze().to(device=device)
-        test_x = torch.Tensor(times[t_ix:t_ix + F * sfreq]).to(device=device)
-        test_y = torch.Tensor(data[:, t_ix:t_ix + F * sfreq]).T.squeeze().to(device=device)
+        train_x = torch.tensor(times[int(t_ix - H * sfreq):t_ix], device=device).float()
+        train_y = torch.tensor(data[:, int(t_ix - H * sfreq):t_ix], device=device).float().T.squeeze()
+        test_x = torch.tensor(times[t_ix:int(t_ix + F * sfreq)], device=device).float()
+        test_y = torch.tensor(data[:, t_ix:int(t_ix + F * sfreq)], device=device).float().T.squeeze()
         yield train_x, train_y, test_x, test_y
