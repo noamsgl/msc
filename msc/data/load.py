@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from typing import Tuple
+import configparser
 
 import mne
 import numpy as np
@@ -17,7 +18,12 @@ COMMON_CHANNELS = (
     'FP1', 'FP2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6', 'FZ', 'CZ', 'PZ',
     'T7', 'T8', 'P7', 'P8')
 
-FPATH = r'C:\raw_data\surf30\pat_103002\adm_1030102\rec_103001102\103001102_0113.data'
+# read local file `config.ini`
+config = configparser.ConfigParser()
+config.read('../../settings/config.ini')
+
+# FPATH = r'C:\raw_data\surf30\pat_103002\adm_1030102\rec_103001102\103001102_0113.data'
+FPATH = config.get('DATA', 'RAW_PATH')
 
 # LFREQ = 0.5  # low frequency for highpass filter
 # HFREQ = 5  # high frequency for lowpass filter

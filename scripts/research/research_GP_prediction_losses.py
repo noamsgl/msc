@@ -83,6 +83,7 @@ if __name__ == '__main__':
 
     accuracies = []
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"beginning process with {device=}")
     # device = torch.device('cpu')
 
     for dataset in msc.data.datasets(H, F, L, dt, offset, device=device):
