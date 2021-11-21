@@ -26,7 +26,6 @@ root_dir = repo.working_tree_dir
 config = configparser.ConfigParser()
 config.read(f'{root_dir}/settings/config.ini')
 
-
 # FPATH = r'C:\raw_data\surf30\pat_103002\adm_1030102\rec_103001102\103001102_0113.data'
 FPATH = config.get('DATA', 'RAW_PATH')
 
@@ -109,8 +108,10 @@ def load_tensor_dataset(fpath: str = FPATH, train_length: int = TRAIN_LENGTH,
                }
     return dataset
 
+
 def get_index_from_time(t, times):
-    return np.argmax(times > t)
+    return np.argmax(times >= t)
+
 
 def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, picks: Tuple[str] = PICKS):
     raw: Raw = mne.io.read_raw_nicolet(fpath, ch_type='eeg', preload=True).pick(picks)
@@ -120,8 +121,8 @@ def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, picks: Tuple[st
 
     t_start = offset + H
     t_stop = t_start + L
-    t_start_idx = np.argmax(times > t_start)
-    t_stop_idx = np.argmin(times < t_stop)
+    t_start_idx = get_index_from_time(t_start, times)
+    t_stop_idx = get_index_from_time(t_stop, times)
 
     stepsize = int(dt * sfreq)
     for t in times[t_start_idx:t_stop_idx:stepsize]:
@@ -131,4 +132,4 @@ def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, picks: Tuple[st
         train_y = torch.tensor(data[:, int(t_ix - H * sfreq):t_ix], device=device).float().T.squeeze()
         test_x = torch.tensor(times[t_ix:int(t_ix + F * sfreq)], device=device).float()
         test_y = torch.tensor(data[:, t_ix:int(t_ix + F * sfreq)], device=device).float().T.squeeze()
-        yield train_x, train_y, test_x, test_y
+        yield t, train_x, train_y, test_x, test_y

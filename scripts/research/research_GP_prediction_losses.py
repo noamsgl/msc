@@ -1,20 +1,28 @@
+import configparser
 import gc
+import pickle
+import timeit
+from datetime import datetime
+
+import git
+import gpytorch
 import torch
-import numpy as np
 from gpytorch.distributions import MultivariateNormal
 
 import msc
-import gpytorch
+from msc.data import PicksOptions
 
-MVN = MultivariateNormal
+MVN = MultivariateNormal  # type alias
 
 
 def readable(num, suffix="B"):
+    """Convert bytes to human readable format"""
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
             return f"{num:3.1f}{unit}{suffix}"
         num /= 1024.0
     return f"{num:.1f}Yi{suffix}"
+
 
 def pretty_size(size):
     """Pretty prints a torch.Size object"""
@@ -68,9 +76,6 @@ def predictive_accuracy(model, likelihood, test_x, test_y):
         predictive_accuracy = predictive_posterior.log_prob(test_y)
         return predictive_accuracy.detach().item()
 
-def train():
-    raise NotImplementedError()
-
 
 if __name__ == '__main__':
     """
@@ -79,24 +84,39 @@ if __name__ == '__main__':
     L: Length of time to iterate over (seconds)
     dt: timestep for loss (seconds)
     offset: offset from beginning of file (seconds)
-    
     """
+    start_time = timeit.default_timer()
 
-    H = 0.5 * 60
-    F = 0.5 * 60
-    L = 0.5 * 60
+    # results to be collected
+    times = []
+    accuracies = []
+
+    # define history, future, length, stepsize, offset
+    H = 0.1 * 60
+    F = 0.1 * 60
+    L = 0.1 * 60
     dt = 0.2  # in seconds
     offset = 0
 
-    accuracies = []
+    # read local file `config.ini`
+    repo = git.Repo('.', search_parent_directories=True)
+    root_dir = repo.working_tree_dir
+    config = configparser.ConfigParser()
+    config.read(f'{root_dir}/settings/config.ini')
+
+    # get data path from config
+    raw_path = config.get('DATA', 'RAW_PATH')
+
+    # get channel selection from config
+    picks = getattr(PicksOptions, config.get('DATA', 'PICKS'))
+
+    # select cpu or gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"beginning process with {device=}")
-    print(f"{torch.cuda.memory_allocated()=}")
-    print(f"{torch.cuda.memory_reserved()=}")
     # device = torch.device('cpu')
 
-    for dataset in msc.data.datasets(H, F, L, dt, offset, device=device):
-        train_x, train_y, test_x, test_y = dataset
+    print(f"beginning process with {device=}")
+    for dataset in msc.data.datasets(H, F, L, dt, offset, fpath=raw_path, picks=picks, device=device):
+        t, train_x, train_y, test_x, test_y = dataset
 
         # instantiate likelihood & model
         likelihood = gpytorch.likelihoods.GaussianLikelihood(
@@ -109,7 +129,7 @@ if __name__ == '__main__':
         likelihood.train()
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[40])
+        # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[40])
 
         num_iters = 200
 
@@ -120,16 +140,15 @@ if __name__ == '__main__':
             loss = -mll(output, train_y)
             loss.backward()
             optimizer.step()
-            scheduler.step()
+            # scheduler.step()
 
             if i % 10 == 0:
                 print(f'Iteration {i} - loss = {loss.item():.2f} - noise = {model.likelihood.noise.item():e}')
-                print(f"{readable(torch.cuda.memory_allocated())=}")
-                print(f"{readable(torch.cuda.memory_reserved())=}")
-        #       print(f"{torch.cuda.memory_summary()}")
-        # clear cuda cache
+                print(f"CUDA allocated = {readable(torch.cuda.memory_allocated())}")
+                print(f"CUDA reserved = {readable(torch.cuda.memory_reserved())}")
+                # print(f"{torch.cuda.memory_summary()}")
 
-        # print alive tensors and variables
+        # clear gpu memory (kill all tensors in system)
         for obj in gc.get_objects():
             try:
                 if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
@@ -145,6 +164,26 @@ if __name__ == '__main__':
 
         with torch.no_grad():
             accuracy = predictive_accuracy(model, likelihood, test_x, test_y)
-            print(f"{accuracy=}")
+            times.append(t)
             accuracies.append(accuracy)
+
+    print(f"{times=}")
     print(f"{accuracies=}")
+    stop_time = timeit.default_timer()
+    results = {'runtime': stop_time - start_time,
+               'raw_path': raw_path,
+               'picks': picks,
+               'H': H,
+               'F': F,
+               'L': L,
+               'dt': dt,
+               'offset': offset,
+               'num_iters': num_iters,
+               'times': times,
+               'accuracies': accuracies}
+
+    iso_8601_format = '%Y%m%dT%H%M%S'  # e.g., 20211119T221000
+    fname = f"{root_dir}/{config['RESULTS']['RESULTS_DIR']}/run_{datetime.now().strftime(iso_8601_format)}.pkl"
+    print(f"dumping results to {fname}")
+    with open(fname, 'wb') as f:
+        pickle.dump(results, f)
