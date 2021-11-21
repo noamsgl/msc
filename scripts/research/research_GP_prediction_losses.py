@@ -9,6 +9,13 @@ import gpytorch
 MVN = MultivariateNormal
 
 
+def readable(num, suffix="B"):
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.1f}Yi{suffix}"
+
 def pretty_size(size):
     """Pretty prints a torch.Size object"""
     assert (isinstance(size, torch.Size))
@@ -78,12 +85,14 @@ if __name__ == '__main__':
     H = 0.5 * 60
     F = 0.5 * 60
     L = 0.5 * 60
-    dt = 0.1  # in seconds
+    dt = 0.2  # in seconds
     offset = 0
 
     accuracies = []
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"beginning process with {device=}")
+    print(f"{torch.cuda.memory_allocated()=}")
+    print(f"{torch.cuda.memory_reserved()=}")
     # device = torch.device('cpu')
 
     for dataset in msc.data.datasets(H, F, L, dt, offset, device=device):
@@ -102,7 +111,7 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer, milestones=[40])
 
-        num_iters = 50
+        num_iters = 200
 
         for i in range(num_iters):
             # print(f"beginning {i=} with {torch.cuda.memory_summary(abbreviated=True)}")
@@ -115,6 +124,9 @@ if __name__ == '__main__':
 
             if i % 10 == 0:
                 print(f'Iteration {i} - loss = {loss.item():.2f} - noise = {model.likelihood.noise.item():e}')
+                print(f"{readable(torch.cuda.memory_allocated())=}")
+                print(f"{readable(torch.cuda.memory_reserved())=}")
+        #       print(f"{torch.cuda.memory_summary()}")
         # clear cuda cache
 
         # print alive tensors and variables
@@ -135,4 +147,4 @@ if __name__ == '__main__':
             accuracy = predictive_accuracy(model, likelihood, test_x, test_y)
             print(f"{accuracy=}")
             accuracies.append(accuracy)
-    print(accuracies)
+    print(f"{accuracies=}")
