@@ -21,3 +21,4 @@ pytest = "*"
 # tvb-library
 # pyqt5
 gpytorch = "*"
+gitpython = "*"

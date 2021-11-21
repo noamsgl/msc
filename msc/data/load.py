@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import Tuple
 import configparser
 
+import git
+
 import mne
 import numpy as np
 import torch
@@ -19,8 +21,11 @@ COMMON_CHANNELS = (
     'T7', 'T8', 'P7', 'P8')
 
 # read local file `config.ini`
+repo = git.Repo('.', search_parent_directories=True)
+root_dir = repo.working_tree_dir
 config = configparser.ConfigParser()
-config.read('../../settings/config.ini')
+config.read(f'{root_dir}/settings/config.ini')
+
 
 # FPATH = r'C:\raw_data\surf30\pat_103002\adm_1030102\rec_103001102\103001102_0113.data'
 FPATH = config.get('DATA', 'RAW_PATH')
