@@ -1,5 +1,6 @@
 import configparser
 import gc
+import os
 import pickle
 import timeit
 from datetime import datetime
@@ -92,9 +93,9 @@ if __name__ == '__main__':
     accuracies = []
 
     # define history, future, length, stepsize, offset
-    H = 0.1 * 60
-    F = 0.1 * 60
-    L = 0.1 * 60
+    H = 1 * 60
+    F = 0.5 * 60
+    L = 1 * 60
     dt = 0.2  # in seconds
     offset = 0
 
@@ -110,12 +111,16 @@ if __name__ == '__main__':
     # get channel selection from config
     picks = getattr(PicksOptions, config.get('DATA', 'PICKS'))
 
+    # get resampling frequency
+    resample_sfreq = config.get('DATA', 'RESAMPLE')
+
     # select cpu or gpu
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # device = torch.device('cpu')
 
     print(f"beginning process with {device=}")
-    for dataset in msc.data.datasets(H, F, L, dt, offset, fpath=raw_path, picks=picks, device=device):
+    for dataset in msc.data.datasets(H, F, L, dt, offset, fpath=raw_path, resample_sfreq=resample_sfreq, picks=picks,
+                                     device=device):
         t, train_x, train_y, test_x, test_y = dataset
 
         # instantiate likelihood & model
@@ -171,6 +176,7 @@ if __name__ == '__main__':
     print(f"{accuracies=}")
     stop_time = timeit.default_timer()
     results = {'runtime': stop_time - start_time,
+               'SLURM_JOB_ID': os.environ.get('SLURM_JOB_ID'),
                'raw_path': raw_path,
                'picks': picks,
                'H': H,

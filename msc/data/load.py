@@ -36,7 +36,7 @@ HFREQ = None  # high frequency for lowpass filter
 CROP = 10  # segment length measured in seconds
 TRAIN_LENGTH = 10  # segment length measured in seconds
 TEST_LENGTH = 2  # segment length measured in seconds
-
+RESAMPLE = None
 
 @dataclass
 class PicksOptions:
@@ -113,8 +113,9 @@ def get_index_from_time(t, times):
     return np.argmax(times >= t)
 
 
-def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, picks: Tuple[str] = PICKS):
+def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, resample_sfreq=RESAMPLE, picks: Tuple[str] = PICKS):
     raw: Raw = mne.io.read_raw_nicolet(fpath, ch_type='eeg', preload=True).pick(picks)
+    raw = raw.copy().resample(resample_sfreq)
     sfreq = int(raw.info['sfreq'])
     data, times = raw.get_data(return_times=True)
     data = (data - np.mean(data)) / np.std(data)
