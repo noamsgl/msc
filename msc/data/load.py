@@ -115,7 +115,8 @@ def get_index_from_time(t, times):
 
 def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, resample_sfreq=RESAMPLE, picks: Tuple[str] = PICKS):
     raw: Raw = mne.io.read_raw_nicolet(fpath, ch_type='eeg', preload=True).pick(picks)
-    raw = raw.copy().resample(resample_sfreq)
+    raw = raw.resample(resample_sfreq)
+
     sfreq = int(raw.info['sfreq'])
     data, times = raw.get_data(return_times=True)
     data = (data - np.mean(data)) / np.std(data)

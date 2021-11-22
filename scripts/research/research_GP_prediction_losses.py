@@ -178,6 +178,7 @@ if __name__ == '__main__':
     results = {'runtime': stop_time - start_time,
                'SLURM_JOB_ID': os.environ.get('SLURM_JOB_ID'),
                'raw_path': raw_path,
+               'sfreq': resample_sfreq,
                'picks': picks,
                'H': H,
                'F': F,
