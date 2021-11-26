@@ -22,3 +22,4 @@ pytest = "*"
 # pyqt5
 gpytorch = "*"
 gitpython = "*"
+nitime = "*"
