@@ -1,14 +1,14 @@
-import configparser
 import os
 from dataclasses import dataclass
 from typing import Tuple, Union
 
-import git
 import mne
 import numpy as np
 import torch
 from mne.io import Raw, BaseRaw
 from numpy.typing import NDArray
+
+from msc.config import get_config
 
 mne.set_log_level(False)
 
@@ -21,10 +21,7 @@ COMMON_CHANNELS = (
     'T7', 'T8', 'P7', 'P8')
 
 # read local file `config.ini`
-repo = git.Repo('.', search_parent_directories=True)
-root_dir = repo.working_tree_dir
-config = configparser.ConfigParser()
-config.read(f'{root_dir}/settings/config.ini')
+config = get_config()
 
 # FPATH = r'C:\raw_data\surf30\pat_103002\adm_1030102\rec_103001102\103001102_0113.data'
 FPATH = config.get('DATA', 'RAW_PATH')
