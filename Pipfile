@@ -23,3 +23,7 @@ pytest = "*"
 gpytorch = "*"
 gitpython = "*"
 nitime = "*"
+pyqt5 = "*"
+
+[dev-packages]
+paramiko = "*"
