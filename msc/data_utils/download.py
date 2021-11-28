@@ -30,7 +30,6 @@ def download_file_scp(relative_file_path):
     """
     # load paths from config file
 
-
     config = get_config()
     datasets_path_remote = config.get('DATA', 'DATASETS_PATH_REMOTE')
     datasets_path_local = config.get('DATA', 'DATASETS_PATH_LOCAL')
@@ -54,6 +53,7 @@ def download_file_scp(relative_file_path):
         user = os.getenv('MSC_USER')
         password = os.getenv('MSC_TOKEN')
 
+        print(f"File not found locally. Attempting to fetch.")
         # instantiate SSH and SCP session
         ssh = createSSHClient(server, port, user, password)
         scp = SCPClient(ssh.get_transport())

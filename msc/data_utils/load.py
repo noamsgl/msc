@@ -9,6 +9,7 @@ from mne.io import Raw, BaseRaw
 from numpy.typing import NDArray
 
 from msc.config import get_config
+from msc.data_utils.download import download_file_scp
 
 mne.set_log_level(False)
 
@@ -169,3 +170,52 @@ def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, resample_sfreq=
         test_x = torch.tensor(times[t_ix:int(t_ix + F * sfreq)], device=device).float()
         test_y = torch.tensor(data[:, t_ix:int(t_ix + F * sfreq)], device=device).float().T.squeeze()
         yield t, train_x, train_y, test_x, test_y
+
+
+def load_raw_seizure(package="surf30", patient="pat_92102", seizure_num=3, delta=0.0) -> Raw:
+    """
+    Return a mne.io.Raw EEG data of the seizure based on the EPILEPSIAE seizure index.
+    Args:
+        package:
+        patient:
+        seizure_num:
+        delta: time (in percentage of seizure length) of EEG before and after a seizure to return
+
+    Returns:
+
+    """
+    import pandas as pd
+    import re
+
+    # get seizure index
+    config = get_config()
+    seizures_index_path = r"C:\raw_data/epilepsiae/seizures_index.csv"
+    df = pd.read_csv(seizures_index_path, index_col=0, parse_dates=['onset', 'offset'])
+
+    # filter out seizure row
+    seizure_row = df.loc[(df["package"] == package) & (df["patient"] == patient) & (df["seizure_num"] == seizure_num)]
+
+    # get seizure file path
+    remote_fpath = seizure_row["onset_fpath"].item()[3:-2]  # extract path from string
+    datasets_path, dataset, relative_file_path = re.split('(epilepsiae/)', remote_fpath)
+    local_path = download_file_scp(relative_file_path)
+
+    # get seizure times
+    onset = seizure_row["onset"].item()
+    offset = seizure_row["offset"].item()
+
+    # load and crop seizure data
+    raw = mne.io.read_raw_nicolet(local_path, ch_type='eeg', preload=True)
+    start_time = (onset - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+    end_time = (offset - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+    seizure_length = end_time - start_time
+    raw = raw.crop(start_time - delta * seizure_length, end_time + delta * seizure_length)
+    return raw
+
+def raw_to_array(raw, T, fs, d, return_times=False) -> Union[NDArray, Tuple[NDArray, NDArray]]:
+    raw = raw.crop(tmax=T).resample(fs)
+    if return_times:
+        data, times = raw.get_data(return_times=True)
+        return data[:d], times
+    else:
+        return raw.get_data()[:d]
