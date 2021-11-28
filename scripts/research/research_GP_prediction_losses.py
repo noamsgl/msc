@@ -11,7 +11,7 @@ import torch
 from gpytorch.distributions import MultivariateNormal
 
 import msc
-from msc.data import PicksOptions
+from msc.data_utils import PicksOptions
 
 MVN = MultivariateNormal  # type alias
 
@@ -119,7 +119,7 @@ if __name__ == '__main__':
     # device = torch.device('cpu')
 
     print(f"beginning process with {device=}")
-    for dataset in msc.data.datasets(H, F, L, dt, offset, fpath=raw_path, resample_sfreq=resample_sfreq, picks=picks,
+    for dataset in msc.data_utils.datasets(H, F, L, dt, offset, fpath=raw_path, resample_sfreq=resample_sfreq, picks=picks,
                                      device=device):
         t, train_x, train_y, test_x, test_y = dataset
 

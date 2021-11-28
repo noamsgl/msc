@@ -1,14 +1,14 @@
+import configparser
 import os
 from dataclasses import dataclass
-from typing import Tuple
-import configparser
+from typing import Tuple, Union
 
 import git
-
 import mne
 import numpy as np
 import torch
-from mne.io import Raw
+from mne.io import Raw, BaseRaw
+from numpy.typing import NDArray
 
 mne.set_log_level(False)
 
@@ -38,6 +38,7 @@ TRAIN_LENGTH = 10  # segment length measured in seconds
 TEST_LENGTH = 2  # segment length measured in seconds
 RESAMPLE = None
 
+
 @dataclass
 class PicksOptions:
     """Class for picks options"""
@@ -50,6 +51,42 @@ class PicksOptions:
 
 
 PICKS = PicksOptions.one_channel
+
+
+class EEGdata:
+    def __init__(self, fpath: str = FPATH, offset: float = 0, crop: int = CROP,
+                 picks: Tuple[str] = PicksOptions.common_channels, verbose: bool = False, l_freq=None, h_freq=None):
+        self.fpath = fpath
+        self.offset = offset
+        self.crop = crop
+        self.picks = picks
+        self.l_freq = l_freq
+        self.h_freq = h_freq
+        self.raw : BaseRaw = self._init_raw_data()
+        # set verbosity
+        self.verbose = verbose
+        mne.set_log_level(verbose)
+
+    def _init_raw_data(self):
+        """
+        load raw data in nicolet (.data & .head) format
+        Returns:
+
+        """
+        extension = os.path.splitext(self.fpath)[1]
+        assert extension == '.data', "unknown extension. currently supports .data"
+
+        raw: Raw = mne.io.read_raw_nicolet(self.fpath, ch_type='eeg', preload=True)
+        raw = raw.pick(self.picks).crop(self.offset, self.offset + self.crop).filter(self.l_freq, self.h_freq)
+        return raw
+
+    def get_data_as_array(self, T, fs, d, return_times=False) -> Union[NDArray, Tuple[NDArray, NDArray]]:
+        raw = self.raw.crop(tmax=T).resample(fs)
+        if return_times:
+            data, times = raw.get_data(return_times=True)
+            return data[:d], times
+        else:
+            return raw.get_data()[:d]
 
 
 def load_raw_data(fpath: str = FPATH, offset: float = 0, crop: int = CROP, picks: Tuple[str] = PICKS,

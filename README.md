@@ -10,7 +10,7 @@
 This repository consist of:
 
 * [msc.bocd](msc/bocd): an implementation of Bayesian Online Changepoint Detection.
-* [msc.data](msc/data): utilities to load EEG datasets.
+* [msc.data_utils](msc/data_utils): utilities to load EEG datasets.
 * [msc.forecaster](msc/forecaster): utilities to train a probabilistic forecasting model. 
 * [notebooks](notebooks): Jupyter notebooks with examples.
 * [scripts](scripts): Jupyter notebooks with examples.
