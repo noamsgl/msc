@@ -4,7 +4,6 @@ from typing import List
 import pandas as pd
 import portion as P
 
-# read local file `config.ini`
 from portion import Interval
 
 from msc.config import get_config
@@ -50,7 +49,7 @@ def get_recording_end(package: str, patient: str) -> datetime:
     return max(patient_data_df.end_date)
 
 
-def get_interictal_times(package: str, patient: str) -> List[Interval[datetime]]:
+def get_interictal_times(package: str, patient: str) -> List[Interval]:
     """
     return interictal time intervals
 
@@ -76,7 +75,7 @@ def get_interictal_times(package: str, patient: str) -> List[Interval[datetime]]
     return [first_interictal] + middle_interictals + [last_interictal]
 
 
-def get_preictal_times(package: str, patient: str) -> List[Interval[datetime]]:
+def get_preictal_times(package: str, patient: str) -> List[Interval]:
     """
     return preictal time intervals
 
