@@ -24,6 +24,7 @@ gpytorch = "*"
 gitpython = "*"
 nitime = "*"
 pyqt5 = "*"
+portion = "*"
 
 [dev-packages]
 paramiko = "*"

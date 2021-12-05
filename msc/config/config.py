@@ -1,4 +1,6 @@
 import configparser
+import os.path
+
 import git
 
 
