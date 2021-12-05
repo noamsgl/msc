@@ -5,12 +5,23 @@ import pandas as pd
 import portion as P
 
 # read local file `config.ini`
+from portion import Interval
+
 from msc.config import get_config
 
 config = get_config()
 
 
 def get_recording_start(package: str, patient: str) -> datetime:
+    """
+    Get first measurement timestamp for patient from data_index.csv
+    Args:
+        package:
+        patient:
+
+    Returns:
+
+    """
     data_index_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}/data_index.csv"
     data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
 
@@ -21,6 +32,15 @@ def get_recording_start(package: str, patient: str) -> datetime:
 
 
 def get_recording_end(package: str, patient: str) -> datetime:
+    """
+    Get last measurement timestamp for the patient from data_index.csv
+    Args:
+        package:
+        patient:
+
+    Returns:
+
+    """
     data_index_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}/data_index.csv"
     data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
 
@@ -30,7 +50,19 @@ def get_recording_end(package: str, patient: str) -> datetime:
     return max(patient_data_df.end_date)
 
 
-def get_interictal_times(package: str, patient: str) -> List[datetime]:
+def get_interictal_times(package: str, patient: str) -> List[Interval[datetime]]:
+    """
+    return interictal time intervals
+
+    example: get_preictal_times("surfCO", "pat_4000") -> interictals=[(Timestamp('2010-03-01 10:25:24'),Timestamp('2010-03-01 19:34:12')), (Timestamp('2010-03-01 23:34:12'),Timestamp('2010-03-02 04:13:38')), (Timestamp('2010-03-02 08:13:38'),Timestamp('2010-03-02 10:18:45')), (Timestamp('2010-03-02 14:18:45'),Timestamp('2010-03-02 15:27:23')), (Timestamp('2010-03-02 19:27:23'),Timestamp('2010-03-02 23:07:14')), (), (Timestamp('2010-03-03 04:10:30'),Timestamp('2010-03-04 09:07:01'))]
+
+    Args:
+        package: | example "surfCO"
+        patient: | example "pat_4000"
+
+    Returns:
+
+    """
     min_diff = timedelta(hours=float(config.get('DATA', 'INTERICTAL_MIN_DIFF_HOURS')))
     recording_start = get_recording_start(package, patient)
     recording_end = get_recording_end(package, patient)
@@ -44,13 +76,34 @@ def get_interictal_times(package: str, patient: str) -> List[datetime]:
     return [first_interictal] + middle_interictals + [last_interictal]
 
 
-def get_preictal_times(package: str, patient: str) -> List[datetime]:
+def get_preictal_times(package: str, patient: str) -> List[Interval[datetime]]:
+    """
+    return preictal time intervals
+
+    example: get_preictal_times("surfCO", "pat_4000") -> preictals=[(Timestamp('2010-03-01 20:34:12'), Timestamp('2010-03-01 21:34:12')), (Timestamp('2010-03-02 05:13:38'), Timestamp('2010-03-02 06:13:38')), (Timestamp('2010-03-02 11:18:45'), Timestamp('2010-03-02 12:18:45')), (Timestamp('2010-03-02 16:27:23'), Timestamp('2010-03-02 17:27:23')), (Timestamp('2010-03-03 00:07:14'), Timestamp('2010-03-03 01:07:14')), (Timestamp('2010-03-03 01:10:30'), Timestamp('2010-03-03 02:10:30'))]
+    Args:
+        package: | example "surfCO"
+        patient: | example "pat_4000"
+
+    Returns:
+
+    """
     onsets = get_seiz_onsets(package, patient)
-    preictals = [(onset - timedelta(hours=1), onset) for onset in onsets]
+    preictals = [P.open(onset - timedelta(hours=float(config.get('DATA', 'PREICTAL_MIN_DIFF_HOURS'))), onset) for onset in onsets]
     return preictals
 
 
 def get_seiz_onsets(package: str, patient: str) -> List[datetime]:
+    """
+    returns seizure onset times.
+    example: get_seiz_onsets("surfCO", "pat_4000") -> onsets=[Timestamp('2010-03-01 21:34:12'), Timestamp('2010-03-02 06:13:38'), Timestamp('2010-03-02 12:18:45'), Timestamp('2010-03-02 17:27:23'), Timestamp('2010-03-03 01:07:14'), Timestamp('2010-03-03 02:10:30')]
+    Args:
+        package: | example "surfCO"
+        patient: | example "pat_4000"
+
+    Returns:
+
+    """
     seizures_index_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}/seizures_index.csv"
 
     seizures_index_df = pd.read_csv(seizures_index_path, parse_dates=['onset', 'offset'])
