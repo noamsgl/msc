@@ -1,12 +1,13 @@
 import os
 from dataclasses import dataclass
-from typing import Tuple, Union
+from typing import Tuple, Union, Sequence, List
 
 import mne
 import numpy as np
 import torch
 from mne.io import Raw, BaseRaw
 from numpy.typing import NDArray
+from portion import Interval
 
 from msc.config import get_config
 from msc.data_utils.download import download_file_scp
@@ -60,7 +61,7 @@ class EEGdata:
         self.picks = picks
         self.l_freq = l_freq
         self.h_freq = h_freq
-        self.raw : BaseRaw = self._init_raw_data()
+        self.raw: BaseRaw = self._init_raw_data()
         # set verbosity
         self.verbose = verbose
         mne.set_log_level(verbose)
@@ -212,6 +213,7 @@ def load_raw_seizure(package="surf30", patient="pat_92102", seizure_num=3, delta
     raw = raw.crop(start_time - delta * seizure_length, end_time + delta * seizure_length)
     return raw
 
+
 def raw_to_array(raw, T, fs, d, return_times=False) -> Union[NDArray, Tuple[NDArray, NDArray]]:
     raw = raw.crop(tmax=T).resample(fs)
     if return_times:
@@ -219,3 +221,14 @@ def raw_to_array(raw, T, fs, d, return_times=False) -> Union[NDArray, Tuple[NDAr
         return data[:d], times
     else:
         return raw.get_data()[:d]
+
+
+def get_raw_from_interval(package:str, patient:str, interval:Interval) -> Raw:
+    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA','DATASET')}"
+    data_dir = f"{dataset_path}/{package}/{patient}"
+    raise NotImplementedError("To Continue from Here")
+
+
+
+def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Interval]) -> List[Raw]:
+    return [get_raw_from_interval(package, patient, interval) for interval in intervals]
