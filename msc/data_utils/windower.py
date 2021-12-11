@@ -49,11 +49,11 @@ def get_recording_end(package: str, patient: str) -> datetime:
     return max(patient_data_df.end_date)
 
 
-def get_interictal_times(package: str, patient: str) -> List[Interval]:
+def get_interictal_intervals(package: str, patient: str) -> List[Interval]:
     """
     return interictal time intervals
 
-    example: get_preictal_times("surfCO", "pat_4000") -> interictals=[(Timestamp('2010-03-01 10:25:24'),Timestamp('2010-03-01 19:34:12')), (Timestamp('2010-03-01 23:34:12'),Timestamp('2010-03-02 04:13:38')), (Timestamp('2010-03-02 08:13:38'),Timestamp('2010-03-02 10:18:45')), (Timestamp('2010-03-02 14:18:45'),Timestamp('2010-03-02 15:27:23')), (Timestamp('2010-03-02 19:27:23'),Timestamp('2010-03-02 23:07:14')), (), (Timestamp('2010-03-03 04:10:30'),Timestamp('2010-03-04 09:07:01'))]
+    example: get_preictal_intervals("surfCO", "pat_4000") -> interictals=[(Timestamp('2010-03-01 10:25:24'),Timestamp('2010-03-01 19:34:12')), (Timestamp('2010-03-01 23:34:12'),Timestamp('2010-03-02 04:13:38')), (Timestamp('2010-03-02 08:13:38'),Timestamp('2010-03-02 10:18:45')), (Timestamp('2010-03-02 14:18:45'),Timestamp('2010-03-02 15:27:23')), (Timestamp('2010-03-02 19:27:23'),Timestamp('2010-03-02 23:07:14')), (), (Timestamp('2010-03-03 04:10:30'),Timestamp('2010-03-04 09:07:01'))]
 
     Args:
         package: | example "surfCO"
@@ -75,11 +75,11 @@ def get_interictal_times(package: str, patient: str) -> List[Interval]:
     return [first_interictal] + middle_interictals + [last_interictal]
 
 
-def get_preictal_times(package: str, patient: str) -> List[Interval]:
+def get_preictal_intervals(package: str, patient: str) -> List[Interval]:
     """
     return preictal time intervals
 
-    example: get_preictal_times("surfCO", "pat_4000") -> preictals=[(Timestamp('2010-03-01 20:34:12'), Timestamp('2010-03-01 21:34:12')), (Timestamp('2010-03-02 05:13:38'), Timestamp('2010-03-02 06:13:38')), (Timestamp('2010-03-02 11:18:45'), Timestamp('2010-03-02 12:18:45')), (Timestamp('2010-03-02 16:27:23'), Timestamp('2010-03-02 17:27:23')), (Timestamp('2010-03-03 00:07:14'), Timestamp('2010-03-03 01:07:14')), (Timestamp('2010-03-03 01:10:30'), Timestamp('2010-03-03 02:10:30'))]
+    example: get_preictal_intervals("surfCO", "pat_4000") -> preictals=[(Timestamp('2010-03-01 20:34:12'), Timestamp('2010-03-01 21:34:12')), (Timestamp('2010-03-02 05:13:38'), Timestamp('2010-03-02 06:13:38')), (Timestamp('2010-03-02 11:18:45'), Timestamp('2010-03-02 12:18:45')), (Timestamp('2010-03-02 16:27:23'), Timestamp('2010-03-02 17:27:23')), (Timestamp('2010-03-03 00:07:14'), Timestamp('2010-03-03 01:07:14')), (Timestamp('2010-03-03 01:10:30'), Timestamp('2010-03-03 02:10:30'))]
     Args:
         package: | example "surfCO"
         patient: | example "pat_4000"

@@ -28,3 +28,4 @@ portion = "*"
 
 [dev-packages]
 paramiko = "*"
+fooof = "*"
