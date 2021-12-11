@@ -4,12 +4,12 @@ from typing import Tuple, Union, Sequence, List
 
 import mne
 import numpy as np
+import pandas as pd
 import portion
 import torch
 from mne.io import Raw, BaseRaw
 from numpy.typing import NDArray
-import pandas as pd
-from pandas import Series
+from pandas import Series, DataFrame
 from portion import Interval
 
 from msc.config import get_config
@@ -226,6 +226,59 @@ def raw_to_array(raw, T, fs, d, return_times=False) -> Union[NDArray, Tuple[NDAr
         return raw.get_data()[:d]
 
 
+def load_raw_from_data_series(row: Series, interval: Interval):
+    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
+    # load raw data
+    raw_path = f"{dataset_path}/{row['package']}/{row['patient']}/{row['admission']}/{row['recording']}/{row['fname']}"
+    raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
+    # trim interval to intersection with data
+    interval = interval.intersection(portion.closed(raw.info["meas_date"], raw.info["end_date"]))
+    # crop raw data to interval
+    start_time = (interval.lower - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+    end_time = (interval.upper - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+    raw = raw.crop(start_time, end_time)
+    return raw
+
+
+def get_raw_from_data_files(data_df: DataFrame, interval: Interval) -> Raw:
+    if len(data_df) > 2:
+        raise ValueError("Interval crosses more than 2 data files")
+
+    if len(data_df) == 0:
+        raise ValueError("Requested interval with 0 data files")
+
+    if len(data_df) == 2:
+        data_df = data_df.sort_values(by=['meas_date']).reset_index()
+        raw_1: Raw = load_raw_from_data_series(data_df.loc[0], interval)
+        raw_2: Raw = load_raw_from_data_series(data_df.loc[1], interval)
+        raw = mne.concatenate_raws([raw_1, raw_2])
+        return raw
+
+    if len(data_df) == 1:
+        raw = load_raw_from_data_series(data_df.reset_index().loc[0], interval)
+        return raw
+
+
+def get_overlapping_data_files(package: str, patient: str, interval: Interval) -> DataFrame:
+    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
+    data_index_path = f"{dataset_path}/data_index.csv"
+
+    data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
+
+    patient_data_df = data_index_df.loc[
+        (data_index_df['package'] == package) & (data_index_df['patient'] == patient)]
+
+    begins_in = lambda x: x['meas_date'] in interval
+    ends_in = lambda x: x['end_date'] in interval
+
+    def is_overlap(row):
+        p = portion.closed(row['meas_date'], row['end_date'])
+        return p.overlaps(interval)
+
+    recordings_df = patient_data_df[patient_data_df.apply(is_overlap, axis=1)]
+    return recordings_df
+
+
 def get_raw_from_interval(package: str, patient: str, interval: Interval) -> Raw:
     """
     Return a raw EEG of a time interval
@@ -237,24 +290,10 @@ def get_raw_from_interval(package: str, patient: str, interval: Interval) -> Raw
     Returns: raw
 
     """
-    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
-    data_dir = f"{dataset_path}/{package}/{patient}"
-    data_index_path = f"{dataset_path}/data_index.csv"
+    recordings_df = get_overlapping_data_files(package, patient, interval)
+    raw = get_raw_from_data_files(recordings_df, interval)
+    return raw
 
-    data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
-
-    patient_data_df = data_index_df.loc[
-        (data_index_df['package'] == package) & (data_index_df['patient'] == patient)]
-
-    begins_in = lambda x:x['meas_date'] in interval
-    ends_in = lambda x:x['end_date'] in interval
-    def is_overlap(row):
-        p = portion.closed(row['meas_date'], row['end_date'])
-        return p.overlaps(interval)
-    recording : Series = patient_data_df[patient_data_df.apply(is_overlap, axis=1)]
-    return recording
-    # print(recording)
-    # print()
 
 def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Interval]) -> List[Raw]:
     """

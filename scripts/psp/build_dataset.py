@@ -17,13 +17,18 @@ from msc.data_utils.load import get_raws_from_intervals
 config = get_config()
 dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA','DATASET')}"
 
-patients = ["pat_3500", "pat_3700", "pat_4000"]
+# patients = ["pat_3500", "pat_3700", "pat_4000"]
+patients = ["pat_9021002"]
 
 for patient in patients:
+    #
+    print(f"getting raws for {patient=}")
     # get package
     patients_index_path = f"{dataset_path}/patients_index.csv"
     patients_df = pd.read_csv(patients_index_path)
-    package = patients_df.loc[patients_df['pat_id'] == patient, 'package'].item()
+    patient_row = patients_df.loc[patients_df['pat_id'] == patient, 'package']
+    assert len(patient_row) == 1, "check patient in patients_index.csv because patient was not found exactly once"
+    package = patient_row.item()
 
     # get intervals
     preictal_intervals = get_preictal_intervals(package, patient)
@@ -31,5 +36,7 @@ for patient in patients:
 
     # load raw data
     raws = get_raws_from_intervals(package, patient, preictal_intervals)
+    print(raws)
+
 
 
