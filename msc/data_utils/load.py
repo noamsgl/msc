@@ -4,9 +4,12 @@ from typing import Tuple, Union, Sequence, List
 
 import mne
 import numpy as np
+import portion
 import torch
 from mne.io import Raw, BaseRaw
 from numpy.typing import NDArray
+import pandas as pd
+from pandas import Series
 from portion import Interval
 
 from msc.config import get_config
@@ -223,12 +226,45 @@ def raw_to_array(raw, T, fs, d, return_times=False) -> Union[NDArray, Tuple[NDAr
         return raw.get_data()[:d]
 
 
-def get_raw_from_interval(package:str, patient:str, interval:Interval) -> Raw:
-    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA','DATASET')}"
+def get_raw_from_interval(package: str, patient: str, interval: Interval) -> Raw:
+    """
+    Return a raw EEG of a time interval
+    Args:
+        package: package name
+        patient: patient name
+        interval: time interval
+
+    Returns: raw
+
+    """
+    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
     data_dir = f"{dataset_path}/{package}/{patient}"
-    raise NotImplementedError("To Continue from Here")
+    data_index_path = f"{dataset_path}/data_index.csv"
 
+    data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
 
+    patient_data_df = data_index_df.loc[
+        (data_index_df['package'] == package) & (data_index_df['patient'] == patient)]
+
+    begins_in = lambda x:x['meas_date'] in interval
+    ends_in = lambda x:x['end_date'] in interval
+    def is_overlap(row):
+        p = portion.closed(row['meas_date'], row['end_date'])
+        return p.overlaps(interval)
+    recording : Series = patient_data_df[patient_data_df.apply(is_overlap, axis=1)]
+    return recording
+    # print(recording)
+    # print()
 
 def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Interval]) -> List[Raw]:
+    """
+    Return a list of raw EEGs from a list of time intervals
+    Args:
+        package: package name
+        patient: patient name
+        intervals: time intervals
+
+    Returns:
+
+    """
     return [get_raw_from_interval(package, patient, interval) for interval in intervals]
