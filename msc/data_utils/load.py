@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Tuple, Union, Sequence, List
 
 import mne
@@ -8,7 +9,7 @@ import pandas as pd
 import portion
 import torch
 from mne.io import Raw, BaseRaw
-from numpy.typing import NDArray
+from numpy import ndarray
 from pandas import Series, DataFrame
 from portion import Interval
 
@@ -82,7 +83,7 @@ class EEGdata:
         raw = raw.pick(self.picks).crop(self.offset, self.offset + self.crop).filter(self.l_freq, self.h_freq)
         return raw
 
-    def get_data_as_array(self, T, fs, d, return_times=False) -> Union[NDArray, Tuple[NDArray, NDArray]]:
+    def get_data_as_array(self, T, fs, d, return_times=False) -> Union[ndarray, Tuple[ndarray, ndarray]]:
         raw = self.raw.crop(tmax=T).resample(fs)
         if return_times:
             data, times = raw.get_data(return_times=True)
@@ -217,7 +218,7 @@ def load_raw_seizure(package="surf30", patient="pat_92102", seizure_num=3, delta
     return raw
 
 
-def raw_to_array(raw, T, fs, d, return_times=False) -> Union[NDArray, Tuple[NDArray, NDArray]]:
+def raw_to_array(raw, T, fs, d, return_times=False) -> Union[ndarray, Tuple[ndarray, ndarray]]:
     raw = raw.crop(tmax=T).resample(fs)
     if return_times:
         data, times = raw.get_data(return_times=True)
@@ -231,8 +232,9 @@ def load_raw_from_data_series(row: Series, interval: Interval):
     # load raw data
     raw_path = f"{dataset_path}/{row['package']}/{row['patient']}/{row['admission']}/{row['recording']}/{row['fname']}"
     raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
+    raw = raw.resample(config.get("DATA", "RESAMPLE"))
     # trim interval to intersection with data
-    interval = interval.intersection(portion.closed(raw.info["meas_date"], raw.info["end_date"]))
+    interval = interval.intersection(portion.closed(raw.info["meas_date"].replace(tzinfo=None), raw.info["meas_date"].replace(tzinfo=None) + timedelta(seconds=int(raw.times[-1]))))
     # crop raw data to interval
     start_time = (interval.lower - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
     end_time = (interval.upper - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
@@ -241,8 +243,20 @@ def load_raw_from_data_series(row: Series, interval: Interval):
 
 
 def get_raw_from_data_files(data_df: DataFrame, interval: Interval) -> Raw:
+    """
+    Get raw data from subset of data_index data_rows, and intersect the data with the given interval
+    Args:
+        data_df:
+        interval:
+
+    Returns:
+
+    """
     if len(data_df) > 2:
-        raise ValueError("Interval crosses more than 2 data files")
+        data_df = data_df.sort_values(by=['meas_date']).reset_index()
+        raws = [load_raw_from_data_series(data_df.loc[i], interval) for i in range(len(data_df))]
+        raw = mne.concatenate_raws(raws)
+        return raw
 
     if len(data_df) == 0:
         raise ValueError("Requested interval with 0 data files")
@@ -260,6 +274,16 @@ def get_raw_from_data_files(data_df: DataFrame, interval: Interval) -> Raw:
 
 
 def get_overlapping_data_files(package: str, patient: str, interval: Interval) -> DataFrame:
+    """
+    Get a DataFrame of all data files which belong to patient, and overlap the interval
+    Args:
+        package:
+        patient:
+        interval:
+
+    Returns:
+
+    """
     dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
     data_index_path = f"{dataset_path}/data_index.csv"
 
@@ -306,4 +330,4 @@ def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Inte
     Returns:
 
     """
-    return [get_raw_from_interval(package, patient, interval) for interval in intervals]
+    return [get_raw_from_interval(package, patient, interval) for interval in intervals if interval != portion.empty()]

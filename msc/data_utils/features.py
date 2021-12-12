@@ -1,6 +1,21 @@
 import numpy as np
+from numpy import ndarray
+from sklearn.base import BaseEstimator, TransformerMixin
 
-from numpy.typing import NDArray
+
+def standardize(X: ndarray) -> ndarray:
+    """
+    shift and scale X to 0 mean and 1 std
+    Args:
+        X:
+
+    Returns:
+
+    """
+    X = X - np.mean(X)
+    X = X / np.std(X)
+    return X
+
 
 
 def cross_correlation(chan_1, chan_2, Fs, tau):
@@ -29,7 +44,7 @@ def cross_correlation(chan_1, chan_2, Fs, tau):
         return cc
 
 
-def maximal_cross_correlation(chan_1: NDArray, chan_2: NDArray, Fs, tau_min=-0.5, tau_max=0.5) -> float:
+def maximal_cross_correlation(chan_1: ndarray, chan_2: ndarray, Fs, tau_min=-0.5, tau_max=0.5) -> float:
     """Return the maximal cross correlation between two channels.
     It is a linear measure of dependence between two signals, that also
     allows fixed delays between two spatially distant EEG signals to accommodate
@@ -50,3 +65,22 @@ def maximal_cross_correlation(chan_1: NDArray, chan_2: NDArray, Fs, tau_min=-0.5
     """
     taus = np.linspace(tau_min, tau_max, num=50, endpoint=True)
     return np.max([cross_correlation(chan_1, chan_2, tau, Fs) for tau in taus])
+
+class SynchronicityFeatures(BaseEstimator, TransformerMixin):
+    def __init__(self, feature_code):
+        assert feature_code in ["C", "S", "DSTL", "SPLV", "H", "Coh"], "feature_code invalid, check paper"
+        self.feature_code = feature_code
+    def fit(self, X, y=None):
+        return self  # nothing else to do
+
+    def transform(self, X, y=None):
+        n_channels = len(X)
+        a = np.arange(n_channels)
+        b = np.arange(n_channels)
+        xa, xb = np.meshgrid(a,b)
+        z = maximal_cross_correlation(xa, xb)
+        if self.feature_code == "C":
+            return maximal_cross_correlation(X)
+
+
+
