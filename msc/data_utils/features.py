@@ -1,6 +1,14 @@
+from typing import List
+
 import numpy as np
+from mne_features.feature_extraction import FeatureExtractor
 from numpy import ndarray
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+from msc.data_utils import get_interictal_intervals, get_preictal_intervals
+from msc.data_utils.load import config, get_raws_from_intervals, get_package_from_patient
 
 
 def standardize(X: ndarray) -> ndarray:
@@ -15,7 +23,6 @@ def standardize(X: ndarray) -> ndarray:
     X = X - np.mean(X)
     X = X / np.std(X)
     return X
-
 
 
 def cross_correlation(chan_1, chan_2, Fs, tau):
@@ -40,7 +47,7 @@ def cross_correlation(chan_1, chan_2, Fs, tau):
         cc = 0
         for t in range(1, N - Fs * tau):
             cc += chan_1[t + Fs * tau] * chan_2[Fs * tau]
-        cc = cc/(N - Fs * tau)
+        cc = cc / (N - Fs * tau)
         return cc
 
 
@@ -66,10 +73,12 @@ def maximal_cross_correlation(chan_1: ndarray, chan_2: ndarray, Fs, tau_min=-0.5
     taus = np.linspace(tau_min, tau_max, num=50, endpoint=True)
     return np.max([cross_correlation(chan_1, chan_2, tau, Fs) for tau in taus])
 
+
 class SynchronicityFeatures(BaseEstimator, TransformerMixin):
     def __init__(self, feature_code):
         assert feature_code in ["C", "S", "DSTL", "SPLV", "H", "Coh"], "feature_code invalid, check paper"
         self.feature_code = feature_code
+
     def fit(self, X, y=None):
         return self  # nothing else to do
 
@@ -77,10 +86,48 @@ class SynchronicityFeatures(BaseEstimator, TransformerMixin):
         n_channels = len(X)
         a = np.arange(n_channels)
         b = np.arange(n_channels)
-        xa, xb = np.meshgrid(a,b)
+        xa, xb = np.meshgrid(a, b)
         z = maximal_cross_correlation(xa, xb)
         if self.feature_code == "C":
             return maximal_cross_correlation(X)
 
 
+def get_features_and_labels(patient, selected_funcs):
+    package = get_package_from_patient(patient)
 
+    print(f"getting raws for {patient=} from {package=}")
+    # get intervals
+    preictal_intervals = get_preictal_intervals(package, patient)
+    print(f"{preictal_intervals=}")
+    interictal_intervals = get_interictal_intervals(package, patient)
+    print(f"{interictal_intervals=}")
+    # load resampled raw datas
+    preictal_raws = get_raws_from_intervals(package, patient, preictal_intervals)
+    print(preictal_raws)  # todo: sanity check here
+    interictal_raws = get_raws_from_intervals(package, patient, interictal_intervals)
+    print(interictal_raws)
+
+    # convert to numpy arrays
+    preictal_Xs: List[ndarray] = [raw.get_data() for raw in preictal_raws]
+    interictal_Xs: List[ndarray] = [raw.get_data() for raw in interictal_raws]
+
+    # build labels
+    preictal_Ys = [int(config.get("DATA", "PREICTAL_LABEL")) for X in preictal_Xs]
+    interictal_Ys = [int(config.get("DATA", "INTERICTAL_LABEL")) for X in interictal_Xs]
+
+    # standardize Xs
+    # preictal_Xs = [standardize(X) for X in preictal_Xs]
+    # interictal_Xs = [standardize(X) for X in interictal_Xs]
+
+    # concat classes
+    Xs = preictal_Xs + interictal_Xs
+    Ys = preictal_Ys + interictal_Ys
+
+    # build data transform and classification pipeline
+
+    pipe = Pipeline(steps=[('standardize', StandardScaler()),
+                           ('fe', FeatureExtractor(sfreq=config.get("DATA", "RESAMPLE"),
+                                                   selected_funcs=selected_funcs))])
+
+    Xs = pipe.fit_transform(Xs)
+    return Xs, Ys
