@@ -331,3 +331,12 @@ def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Inte
 
     """
     return [get_raw_from_interval(package, patient, interval) for interval in intervals if interval != portion.empty()]
+
+def get_package_from_patient(patient: str) -> str:
+    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
+    patients_index_path = f"{dataset_path}/patients_index.csv"
+    patients_df = pd.read_csv(patients_index_path)
+    patient_row = patients_df.loc[patients_df['pat_id'] == patient, 'package']
+    assert len(patient_row) == 1, "check patient in patients_index.csv because patient was not found exactly once"
+    package = patient_row.item()
+    return package
