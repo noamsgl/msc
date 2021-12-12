@@ -1,6 +1,9 @@
+from datetime import timedelta
+from itertools import chain
 from typing import List
 
 import numpy as np
+import portion
 from mne_features.feature_extraction import FeatureExtractor
 from numpy import ndarray
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -92,6 +95,13 @@ class SynchronicityFeatures(BaseEstimator, TransformerMixin):
             return maximal_cross_correlation(X)
 
 
+def intervals_to_windows(intervals, time_minutes=5):
+    start_times = [list(portion.iterate(intervals[i], step=timedelta(minutes=time_minutes))) for i in
+                   range(len(intervals))]
+    windows = [[portion.closed(times[i], times[i + 1]) for i in range(len(times) - 1)] for times in start_times]
+    return list(chain.from_iterable(windows))  # chain together sublists
+
+
 def get_features_and_labels(patient, selected_funcs):
     package = get_package_from_patient(patient)
 
@@ -101,15 +111,22 @@ def get_features_and_labels(patient, selected_funcs):
     print(f"{preictal_intervals=}")
     interictal_intervals = get_interictal_intervals(package, patient)
     print(f"{interictal_intervals=}")
+
+    # get windowed intervals
+    preictal_window_intervals = intervals_to_windows(preictal_intervals)
+    interictal_window_intervals = intervals_to_windows(interictal_intervals)
+
     # load resampled raw datas
-    preictal_raws = get_raws_from_intervals(package, patient, preictal_intervals)
-    print(preictal_raws)  # todo: sanity check here
-    interictal_raws = get_raws_from_intervals(package, patient, interictal_intervals)
-    print(interictal_raws)
+    preictal_raws = get_raws_from_intervals(package, patient, preictal_window_intervals)
+    print(f"{preictal_raws=}")  # todo: sanity check here
+    interictal_raws = get_raws_from_intervals(package, patient, interictal_window_intervals)
+    print(f"{interictal_raws=}")
 
     # convert to numpy arrays
     preictal_Xs: List[ndarray] = [raw.get_data() for raw in preictal_raws]
+    print(f"{preictal_Xs=}")
     interictal_Xs: List[ndarray] = [raw.get_data() for raw in interictal_raws]
+    print(f"{interictal_Xs=}")
 
     # build labels
     preictal_Ys = [int(config.get("DATA", "PREICTAL_LABEL")) for _ in preictal_Xs]
