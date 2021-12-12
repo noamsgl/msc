@@ -112,8 +112,8 @@ def get_features_and_labels(patient, selected_funcs):
     interictal_Xs: List[ndarray] = [raw.get_data() for raw in interictal_raws]
 
     # build labels
-    preictal_Ys = [int(config.get("DATA", "PREICTAL_LABEL")) for X in preictal_Xs]
-    interictal_Ys = [int(config.get("DATA", "INTERICTAL_LABEL")) for X in interictal_Xs]
+    preictal_Ys = [int(config.get("DATA", "PREICTAL_LABEL")) for _ in preictal_Xs]
+    interictal_Ys = [int(config.get("DATA", "INTERICTAL_LABEL")) for _ in interictal_Xs]
 
     # standardize Xs
     # preictal_Xs = [standardize(X) for X in preictal_Xs]

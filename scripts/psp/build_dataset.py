@@ -17,6 +17,7 @@ from msc.data_utils.features import get_features_and_labels
 from msc.data_utils.load import get_package_from_patient
 
 config = get_config()
+print(f"Starting {os.path.basename(__file__)} with {config=}")
 dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
 
 patients = ["pat_3500", "pat_3700", "pat_4000"]
