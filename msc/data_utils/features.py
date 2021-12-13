@@ -151,9 +151,11 @@ def save_dataset_to_disk(patient, picks, selected_func, fast_dev_mode=False):
     Returns: samples_df, Xs, Ys
 
     """
+    if fast_dev_mode:
+        print(f"WARNING! {fast_dev_mode=} !!! Results are incomplete.")
     package = get_package_from_patient(patient)
 
-    print(f"getting raws for {patient=} from {package=}")
+    print(f"getting {selected_func=} for {patient=} from {package=}")
     # get intervals
     preictal_intervals = get_preictal_intervals(package, patient, fast_dev_mode)
     print(f"{preictal_intervals=}")

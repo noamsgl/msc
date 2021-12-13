@@ -28,4 +28,4 @@ for selected_func in ['max_cross_corr', 'phase_lock_val', 'nonlin_interdep', 'ti
         # get package
         picks = PicksOptions.common_channels
         # picks = None
-        save_dataset_to_disk(patient, picks, selected_func, fast_dev_mode=True)
+        save_dataset_to_disk(patient, picks, selected_func, fast_dev_mode=False)
