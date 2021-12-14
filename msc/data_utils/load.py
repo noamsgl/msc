@@ -15,6 +15,7 @@ from pandas import Series, DataFrame
 from portion import Interval
 from tqdm import tqdm
 
+
 from msc.config import get_config
 from msc.data_utils.download import download_file_scp
 
@@ -243,6 +244,7 @@ def load_raw_from_data_row_and_interval(row: Series, interval: Interval):
     interval = interval.intersection(portion.closedopen(raw.info["meas_date"].replace(tzinfo=None),
                                                         raw.info["meas_date"].replace(tzinfo=None) + timedelta(
                                                             seconds=int(raw.times[-1]))))
+
     # crop raw data to interval
     start_time = (interval.lower - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
     end_time = (interval.upper - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
@@ -292,7 +294,6 @@ def get_overlapping_data_files(patient_data_df: DataFrame, interval: Interval) -
     Returns:
 
     """
-
     def is_overlap(row):
         p = portion.closedopen(row['meas_date'], row['end_date'])
         return p.overlaps(interval)
@@ -306,13 +307,14 @@ def get_raw_from_interval(patient_data_df, interval: Interval) -> Raw:
     Return a raw EEG of a time interval
     Args:
         patient_data_df:
+
         interval: time interval
 
     Returns: raw
 
     """
-
     recordings_df = get_overlapping_data_files(patient_data_df, interval)
+
     raw = get_raw_from_data_files(recordings_df, interval)
     return raw
 
@@ -400,6 +402,7 @@ def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Inte
 
     raws = [get_raw_from_interval(patient_data_df, interval) for interval in intervals if interval != portion.empty()]
     return [raw for raw in raws if raw]  # remove None values
+
 
 
 def get_package_from_patient(patient: str) -> str:
