@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler
 
 from msc.data_utils import get_interictal_intervals, get_preictal_intervals
 from msc.data_utils.load import config, get_package_from_patient, get_patient_data_index, \
-    get_raws_from_data_and_intervals, get_interval_from_raw
+    get_raws_from_data_and_intervals, get_interval_from_raw, get_time_as_str
 
 
 def standardize(X: ndarray) -> ndarray:
@@ -105,17 +105,18 @@ def intervals_to_windows(intervals, time_minutes=5):
     return list(chain.from_iterable(windows))  # chain together sublists
 
 
-def write_metadata(data_dir, pat_id, picks, features_desc):
+def write_metadata(data_dir, pat_id, picks, fast_dev_mode, dataset_timestamp, features_desc):
     # The path of the metadata file
     path = os.path.join(data_dir, 'dataset.txt')
 
     with open(path, 'w') as file:
         # Datetime
-        file.write(f'Dataset Creation DateTime: {datetime.now()}\n\n')
+        file.write(f'Dataset Creation DateTime: {dataset_timestamp}\n\n')
 
         # Dataset metdata
         file.write('\nDataset Metadata\n')
         file.write('***************\n')
+        file.write(f'Fast Dev Mode: {fast_dev_mode}\n')
         file.write(f'Patient Id: {pat_id}\n')
         file.write(f'Features Type: {features_desc}\n')
         file.write(f'Channel Selection: {picks}\n')
@@ -141,12 +142,15 @@ def extract_feature_from_numpy(X: ndarray, selected_func: str, sfreq, frame_leng
     return X
 
 
-def save_dataset_to_disk(patient, picks, selected_func, fast_dev_mode=False):
+def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, fast_dev_mode=False):
     """
     Gets the features Xs and labels Ys for a partitioned and feature extracted dataset
     Args:
         patient: the patient's id
-        selected_funcs: the feature functions
+        picks:
+        selected_func: the feature function
+        dataset_timestamp:
+        fast_dev_mode:
 
     Returns: samples_df, Xs, Ys
 
@@ -176,11 +180,10 @@ def save_dataset_to_disk(patient, picks, selected_func, fast_dev_mode=False):
                                                        fast_dev_mode)
     print(f"{interictal_raws}")
 
-    iso_8601_format = '%Y%m%dT%H%M%S'  # e.g., 20211119T221000
-    data_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}/{config.get('DATA', 'DATASET')}/{selected_func}/{package}/{patient}/{datetime.now().strftime(iso_8601_format)}"
+    data_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}/{config.get('DATA', 'DATASET')}/{selected_func}/{package}/{patient}/{dataset_timestamp}"
     print(f"dumping results to {data_dir}")
     os.makedirs(data_dir, exist_ok=True)
-    write_metadata(data_dir, patient, picks, selected_func)
+    write_metadata(data_dir, patient, picks, fast_dev_mode, dataset_timestamp, selected_func)
 
     samples_df = pd.DataFrame(columns=['package', 'patient', 'interval',
                                        'window_id', 'fname', 'label', 'label_desc'])

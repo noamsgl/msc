@@ -1,7 +1,7 @@
 import os
 import sys
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Tuple, Union, Sequence, List
 
 import mne
@@ -413,3 +413,9 @@ def get_package_from_patient(patient: str) -> str:
     assert len(patient_row) == 1, "check patient in patients_index.csv because patient was not found exactly once"
     package = patient_row.item()
     return package
+
+def get_time_as_str(fmt=None):
+    if fmt == None:
+        iso_8601_format = '%Y%m%dT%H%M%S'  # e.g., 20211119T221000
+        fmt = iso_8601_format
+    return datetime.now().strftime(iso_8601_format)
