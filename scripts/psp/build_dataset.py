@@ -13,26 +13,20 @@ import os.path
 import pickle
 
 from msc.config import get_config
-from msc.data_utils.features import get_features_and_labels
-from msc.data_utils.load import get_package_from_patient
+from msc.data_utils.features import save_dataset_to_disk
+from msc.data_utils.load import get_package_from_patient, PicksOptions
 
+fast_dev_mode = False
 config = get_config()
-print(f"Starting {os.path.basename(__file__)} with {config=}")
+print(f"Starting {os.path.basename(__file__)} with {config=}, {fast_dev_mode=}")  #todo: make config printable
 dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
+results_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}"
 
 patients = ["pat_3500", "pat_3700", "pat_4000"]
 # patients = ["pat_9021002"]
-
-for patient in patients:
-    # get package
-    selected_funcs = ['mean']
-
-    Xs, Ys = get_features_and_labels(patient, selected_funcs)
-    package = get_package_from_patient(patient)
-    features_dump_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}/{config.get('DATA', 'DATASET')}/{'_'.join(selected_funcs)}/{package}/{patient}"
-    os.makedirs(features_dump_dir, exist_ok=True)
-
-    print(f"dumping Xs to {features_dump_dir}/Xs.pkl")
-    pickle.dump(Xs, open(f"{features_dump_dir}/Xs.pkl", 'wb'))
-    print(f"dumping Ys to {features_dump_dir}/Ys.pkl")
-    pickle.dump(Ys, open(f"{features_dump_dir}/Ys.pkl", 'wb'))
+for selected_func in ['max_cross_corr', 'phase_lock_val', 'nonlin_interdep', 'time_corr', 'spect_corr']:
+    for patient in patients:
+        # get package
+        picks = PicksOptions.common_channels
+        # picks = None
+        save_dataset_to_disk(patient, picks, selected_func, fast_dev_mode=fast_dev_mode)

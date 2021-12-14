@@ -1,14 +1,20 @@
-from typing import List
+import itertools
+import os
+import pickle
+from datetime import timedelta, datetime
+from itertools import chain
 
+import mne_features.feature_extraction
 import numpy as np
-from mne_features.feature_extraction import FeatureExtractor
+import pandas as pd
+import portion
 from numpy import ndarray
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from msc.data_utils import get_interictal_intervals, get_preictal_intervals
-from msc.data_utils.load import config, get_raws_from_intervals, get_package_from_patient
+from msc.data_utils.load import config, get_package_from_patient, get_patient_data_index, \
+    get_raws_from_data_and_intervals, get_interval_from_raw
 
 
 def standardize(X: ndarray) -> ndarray:
@@ -92,42 +98,139 @@ class SynchronicityFeatures(BaseEstimator, TransformerMixin):
             return maximal_cross_correlation(X)
 
 
-def get_features_and_labels(patient, selected_funcs):
+def intervals_to_windows(intervals, time_minutes=5):
+    start_times = [list(portion.iterate(intervals[i], step=timedelta(minutes=time_minutes))) for i in
+                   range(len(intervals))]
+    windows = [[portion.closedopen(times[i], times[i + 1]) for i in range(len(times) - 1)] for times in start_times]
+    return list(chain.from_iterable(windows))  # chain together sublists
+
+
+def write_metadata(data_dir, pat_id, picks, features_desc):
+    # The path of the metadata file
+    path = os.path.join(data_dir, 'dataset.txt')
+
+    with open(path, 'w') as file:
+        # Datetime
+        file.write(f'Dataset Creation DateTime: {datetime.now()}\n\n')
+
+        # Dataset metdata
+        file.write('\nDataset Metadata\n')
+        file.write('***************\n')
+        file.write(f'Patient Id: {pat_id}\n')
+        file.write(f'Features Type: {features_desc}\n')
+        file.write(f'Channel Selection: {picks}\n')
+
+
+
+def extract_feature_from_numpy(X: ndarray, selected_func: str, sfreq, frame_length_sec=5) -> ndarray:
+    """
+    Extract features at every 5s frame and concatenate into feature window
+    Args:
+        X:
+        selected_func:
+        sfreq:
+        frame_length_sec:
+
+    Returns:
+
+    """
+    frames = np.array_split(X, X.shape[-1] // (sfreq * frame_length_sec), axis=1)
+    features = [mne_features.get_bivariate_funcs(sfreq=sfreq)[selected_func](f) for f in
+                frames]
+    X = np.vstack(features).T
+    return X
+
+
+def save_dataset_to_disk(patient, picks, selected_func, fast_dev_mode=False):
+    """
+    Gets the features Xs and labels Ys for a partitioned and feature extracted dataset
+    Args:
+        patient: the patient's id
+        selected_funcs: the feature functions
+
+    Returns: samples_df, Xs, Ys
+
+    """
+    if fast_dev_mode:
+        print(f"WARNING! {fast_dev_mode=} !!! Results are incomplete.")
     package = get_package_from_patient(patient)
 
-    print(f"getting raws for {patient=} from {package=}")
+    print(f"getting {selected_func=} for {patient=} from {package=}")
     # get intervals
-    preictal_intervals = get_preictal_intervals(package, patient)
+    preictal_intervals = get_preictal_intervals(package, patient, fast_dev_mode)
     print(f"{preictal_intervals=}")
-    interictal_intervals = get_interictal_intervals(package, patient)
+    interictal_intervals = get_interictal_intervals(package, patient, fast_dev_mode)
     print(f"{interictal_intervals=}")
-    # load resampled raw datas
-    preictal_raws = get_raws_from_intervals(package, patient, preictal_intervals)
-    print(preictal_raws)  # todo: sanity check here
-    interictal_raws = get_raws_from_intervals(package, patient, interictal_intervals)
-    print(interictal_raws)
 
-    # convert to numpy arrays
-    preictal_Xs: List[ndarray] = [raw.get_data() for raw in preictal_raws]
-    interictal_Xs: List[ndarray] = [raw.get_data() for raw in interictal_raws]
+    # get windowed intervals
+    preictal_window_intervals = intervals_to_windows(preictal_intervals)
+    print(f"{preictal_window_intervals=}")
+    interictal_window_intervals = intervals_to_windows(interictal_intervals)
+    print(f"{interictal_window_intervals=}")
 
-    # build labels
-    preictal_Ys = [int(config.get("DATA", "PREICTAL_LABEL")) for _ in preictal_Xs]
-    interictal_Ys = [int(config.get("DATA", "INTERICTAL_LABEL")) for _ in interictal_Xs]
+    # get patient data files
+    patient_data_df = get_patient_data_index(patient)
+    preictal_raws = get_raws_from_data_and_intervals(patient_data_df, picks, preictal_window_intervals, fast_dev_mode)
+    print(f"{preictal_raws=}")
+    interictal_raws = get_raws_from_data_and_intervals(patient_data_df, picks, interictal_window_intervals,
+                                                       fast_dev_mode)
+    print(f"{interictal_raws}")
 
-    # standardize Xs
-    # preictal_Xs = [standardize(X) for X in preictal_Xs]
-    # interictal_Xs = [standardize(X) for X in interictal_Xs]
+    iso_8601_format = '%Y%m%dT%H%M%S'  # e.g., 20211119T221000
+    data_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}/{config.get('DATA', 'DATASET')}/{selected_func}/{package}/{patient}/{datetime.now().strftime(iso_8601_format)}"
+    print(f"dumping results to {data_dir}")
+    os.makedirs(data_dir, exist_ok=True)
+    write_metadata(data_dir, patient, picks, selected_func)
 
-    # concat classes
-    Xs = preictal_Xs + interictal_Xs
-    Ys = preictal_Ys + interictal_Ys
+    samples_df = pd.DataFrame(columns=['package', 'patient', 'interval',
+                                       'window_id', 'fname', 'label', 'label_desc'])
+    counter = itertools.count()
 
-    # build data transform and classification pipeline
+    print("starting to process preictal raws")
+    for raw in preictal_raws:
+        interval = get_interval_from_raw(raw)
+        window_id = next(counter)
+        fname = f"{data_dir}/window_{window_id}.pkl"
+        y = config.get("DATA", "PREICTAL_LABEL")
+        row = {"package": package,
+               "patient": patient,
+               "interval": interval,
+               "window_id": window_id,
+               "fname": fname,
+               "label": y,
+               "label_desc": "preictal"}
+        samples_df = samples_df.append(row, ignore_index=True)
+        X = raw.get_data()
+        X = StandardScaler().fit_transform(X)
+        print(f"dumping {window_id=} to {fname=}")
+        # X = mne_features.feature_extraction.FeatureExtractor(sfreq=config.get("DATA", "RESAMPLE"),
+        #                                                      selected_funcs=selected_funcs).fit_transform(X)
+        X = extract_feature_from_numpy(X, selected_func, float(config.get("DATA", "RESAMPLE")))
+        pickle.dump(X, open(fname, 'wb'))
 
-    pipe = Pipeline(steps=[('standardize', StandardScaler()),
-                           ('fe', FeatureExtractor(sfreq=config.get("DATA", "RESAMPLE"),
-                                                   selected_funcs=selected_funcs))])
+    print("starting to process interictal raws")
+    for raw in interictal_raws:
+        interval = get_interval_from_raw(raw)
+        window_id = next(counter)
+        fname = f"{data_dir}/window_{window_id}.pkl"
+        y = config.get("DATA", "INTERICTAL_LABEL")
+        row = {"package": package,
+               "patient": patient,
+               "interval": interval,
+               "window_id": window_id,
+               "fname": fname,
+               "label": y,
+               "label_desc": "interictal"}
+        samples_df = samples_df.append(row, ignore_index=True)
+        X = raw.get_data()
+        X = StandardScaler().fit_transform(X)
+        # X = mne_features.feature_extraction.FeatureExtractor(sfreq=float(config.get("DATA", "RESAMPLE")),
+        #                                                      selected_funcs=selected_funcs).fit_transform(X)
+        X = extract_feature_from_numpy(X, selected_func, float(config.get("DATA", "RESAMPLE")))
+        print(f"dumping {window_id=} to {fname=}")
+        pickle.dump(X, open(fname, 'wb'))
+    samples_df_path = f"{data_dir}/dataset.csv"
+    print(f"saving samples_df to {samples_df_path=}")
+    samples_df.to_csv(samples_df_path)
+    return
 
-    Xs = pipe.fit_transform(Xs)
-    return Xs, Ys

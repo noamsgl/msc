@@ -49,7 +49,7 @@ def get_recording_end(package: str, patient: str) -> datetime:
     return max(patient_data_df.end_date)
 
 
-def get_interictal_intervals(package: str, patient: str) -> List[Interval]:
+def get_interictal_intervals(package: str, patient: str, fast_dev_mode: bool) -> List[Interval]:
     """
     return interictal time intervals
 
@@ -71,11 +71,13 @@ def get_interictal_intervals(package: str, patient: str) -> List[Interval]:
     first_interictal = P.open(recording_start, onsets[0] - min_diff)
     middle_interictals = [P.open(onsets[i] + min_diff, onsets[i + 1] - min_diff) for i in range(0, len(onsets) - 1)]
     last_interictal = P.open(onsets[-1] + min_diff, recording_end)
+    interictals = [first_interictal] + middle_interictals + [last_interictal]
+    if fast_dev_mode:
+        return interictals[:2]
+    return interictals
 
-    return [first_interictal] + middle_interictals + [last_interictal]
 
-
-def get_preictal_intervals(package: str, patient: str) -> List[Interval]:
+def get_preictal_intervals(package: str, patient: str, fast_dev_mode: bool) -> List[Interval]:
     """
     return preictal time intervals
 
@@ -89,6 +91,8 @@ def get_preictal_intervals(package: str, patient: str) -> List[Interval]:
     """
     onsets = get_seiz_onsets(package, patient)
     preictals = [P.open(onset - timedelta(hours=float(config.get('DATA', 'PREICTAL_MIN_DIFF_HOURS'))), onset) for onset in onsets]
+    if fast_dev_mode:
+        return preictals[:2]
     return preictals
 
 
