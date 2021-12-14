@@ -188,14 +188,14 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
     data_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}/{config.get('DATA', 'DATASET')}/{selected_func}/{package}/{patient}/{dataset_timestamp}"
     print(f"dumping results to {data_dir}")
     os.makedirs(data_dir, exist_ok=True)
-    write_metadata(data_dir, patient, picks, config, fast_dev_mode, dataset_timestamp, selected_func)
+    write_metadata(data_dir, patient, preictal_raws[0].info["ch_names"], config, fast_dev_mode, dataset_timestamp, selected_func)
 
     samples_df = pd.DataFrame(columns=['package', 'patient', 'interval',
                                        'window_id', 'fname', 'label', 'label_desc'])
     counter = itertools.count()
 
     print("starting to process preictal raws")
-    for raw in preictal_raws:
+    for raw in preictal_raws[:2 if fast_dev_mode else len(preictal_raws)]:
         interval = get_interval_from_raw(raw)
         window_id = next(counter)
         fname = f"{data_dir}/window_{window_id}.pkl"
@@ -217,7 +217,7 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
         pickle.dump(X, open(fname, 'wb'))
 
     print("starting to process interictal raws")
-    for raw in interictal_raws:
+    for raw in interictal_raws[:2 if fast_dev_mode else len(interictal_intervals)]:
         interval = get_interval_from_raw(raw)
         window_id = next(counter)
         fname = f"{data_dir}/window_{window_id}.pkl"
