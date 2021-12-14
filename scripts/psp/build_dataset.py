@@ -10,18 +10,17 @@ References
 [1] Mirowski, Piotr, et al. "Classification of patterns of EEG synchronization for seizure prediction." Clinical neurophysiology 120.11 (2009): 1927-1940.
 """
 import os.path
-import pickle
 
 from msc.config import get_config
 from msc.data_utils.features import save_dataset_to_disk
-from msc.data_utils.load import get_package_from_patient, PicksOptions, get_time_as_str
+from msc.data_utils.load import PicksOptions, get_time_as_str
 
-fast_dev_mode = False
+fast_dev_mode = True
 config = get_config()
 
 dataset_timestamp = get_time_as_str()
 
-print(f"Starting {os.path.basename(__file__)} with {config=}, {fast_dev_mode=} at time {dataset_timestamp}")  #todo: make config printable
+print(f"Starting {os.path.basename(__file__)} with {fast_dev_mode=} at time {dataset_timestamp}")
 dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
 results_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}"
 
@@ -32,4 +31,4 @@ for selected_func in ['max_cross_corr', 'phase_lock_val', 'nonlin_interdep', 'ti
         # get package
         picks = PicksOptions.common_channels
         # picks = None
-        save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, fast_dev_mode=fast_dev_mode)
+        save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, config, fast_dev_mode=fast_dev_mode)

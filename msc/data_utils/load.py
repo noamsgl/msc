@@ -15,7 +15,6 @@ from pandas import Series, DataFrame
 from portion import Interval
 from tqdm import tqdm
 
-
 from msc.config import get_config
 from msc.data_utils.download import download_file_scp
 
@@ -29,21 +28,6 @@ COMMON_CHANNELS = (
     'Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6', 'Fz', 'Cz', 'Pz',
     'T7', 'T8', 'P7', 'P8')
 
-# read local file `config.ini`
-config = get_config()
-
-# FPATH = r'C:\raw_data\surf30\pat_103002\adm_1030102\rec_103001102\103001102_0113.data'
-FPATH = config.get('DATA', 'RAW_PATH')
-
-# LFREQ = 0.5  # low frequency for highpass filter
-# HFREQ = 5  # high frequency for lowpass filter
-LFREQ = None  # low frequency for highpass filter
-HFREQ = None  # high frequency for lowpass filter
-CROP = 10  # segment length measured in seconds
-TRAIN_LENGTH = 10  # segment length measured in seconds
-TEST_LENGTH = 2  # segment length measured in seconds
-RESAMPLE = None
-
 
 @dataclass
 class PicksOptions:
@@ -56,11 +40,8 @@ class PicksOptions:
     eeg_channels: Tuple[str] = tuple(set(ALL_CHANNELS) - set(non_eeg_channels))
 
 
-PICKS = PicksOptions.one_channel
-
-
 class EEGdata:
-    def __init__(self, fpath: str = FPATH, offset: float = 0, crop: int = CROP,
+    def __init__(self, fpath: str, offset: float = 0, crop: int = 10,
                  picks: Tuple[str] = PicksOptions.common_channels, verbose: bool = False, l_freq=None, h_freq=None):
         self.fpath = fpath
         self.offset = offset
@@ -95,8 +76,8 @@ class EEGdata:
             return raw.get_data()[:d]
 
 
-def load_raw_data(fpath: str = FPATH, offset: float = 0, crop: int = CROP, picks: Tuple[str] = PICKS,
-                  verbose: bool = False) -> Raw:
+def load_raw_data(fpath: str, offset: float = 0, crop: int = 10, picks: Tuple[str] = None,
+                  verbose: bool = False, lfreq=None, hfreq=None) -> Raw:
     """ get sample data for testing
 
     Args:
@@ -120,12 +101,12 @@ def load_raw_data(fpath: str = FPATH, offset: float = 0, crop: int = CROP, picks
         raise ValueError("unknown extension. currently supports: .data, .edf")
 
     # crop and filter raw
-    raw = raw.pick(picks).crop(offset, offset + crop).filter(l_freq=LFREQ, h_freq=HFREQ)
+    raw = raw.pick(picks).crop(offset, offset + crop).filter(l_freq=lfreq, h_freq=hfreq)
     return raw
 
 
-def load_tensor_dataset(fpath: str = FPATH, train_length: int = TRAIN_LENGTH,
-                        test_length: int = TEST_LENGTH, picks: Tuple[str] = PICKS) -> dict:
+def load_tensor_dataset(fpath: str, train_length: int = 20,
+                        test_length: int = 10, picks: Tuple[str] = None) -> dict:
     """ Returns a standardized dataset
 
     Args:
@@ -153,10 +134,14 @@ def load_tensor_dataset(fpath: str = FPATH, train_length: int = TRAIN_LENGTH,
 
 
 def get_index_from_time(t, times):
+    """Get the first index at which `times` (a sorted array of time values) crosses a given time t."""
     return np.argmax(times >= t)
 
 
-def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, resample_sfreq=RESAMPLE, picks: Tuple[str] = PICKS):
+def datasets(H, F, L, dt, offset, device, *, fpath: str, resample_sfreq, picks: Tuple[str]):
+    """Deprecated
+        #todo: remove
+     """
     raw: Raw = mne.io.read_raw_nicolet(fpath, ch_type='eeg', preload=True).pick(picks)
     raw = raw.resample(resample_sfreq)
 
@@ -180,7 +165,15 @@ def datasets(H, F, L, dt, offset, device, *, fpath: str = FPATH, resample_sfreq=
         yield t, train_x, train_y, test_x, test_y
 
 
-def get_interval_from_raw(raw):
+def get_interval_from_raw(raw: Raw) -> Interval:
+    """
+    Return a portion.Interval with the end points equal to the beginning and end of the raw segment, respectively.
+    Args:
+        raw:
+
+    Returns:
+
+    """
     lower = raw.info["meas_date"].replace(tzinfo=None)
     upper = raw.info["meas_date"].replace(tzinfo=None) + timedelta(seconds=int(raw.times[-1]))
     return portion.closedopen(lower, upper)
@@ -234,7 +227,17 @@ def raw_to_array(raw, T, fs, d, return_times=False) -> Union[ndarray, Tuple[ndar
         return raw.get_data()[:d]
 
 
-def load_raw_from_data_row_and_interval(row: Series, interval: Interval):
+def load_raw_from_data_row_and_interval(row: Series, interval: Interval) -> Raw:
+    """
+    Return a raw EEG from a data_index row and it's intersection with an interval
+    Args:
+        row:
+        interval:
+
+    Returns:
+
+    """
+    config = get_config()
     dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
     # load raw data
     raw_path = f"{dataset_path}/{row['package']}/{row['patient']}/{row['admission']}/{row['recording']}/{row['fname']}"
@@ -252,14 +255,15 @@ def load_raw_from_data_row_and_interval(row: Series, interval: Interval):
     return raw
 
 
-def get_raw_from_data_files(data_df: DataFrame, interval: Interval) -> Raw:
+def get_raw_from_data_files(data_df: DataFrame, interval: Interval) -> Union[Raw, None]:
     """
     Get raw data from subset of data_index data_rows, and intersect the data with the given interval
+    If len(data_df)==0, return None.
     Args:
         data_df:
         interval:
 
-    Returns:
+    Returns: Raw (if data_df is empty, return None)
 
     """
     if len(data_df) > 2:
@@ -294,6 +298,7 @@ def get_overlapping_data_files(patient_data_df: DataFrame, interval: Interval) -
     Returns:
 
     """
+
     def is_overlap(row):
         p = portion.closedopen(row['meas_date'], row['end_date'])
         return p.overlaps(interval)
@@ -326,10 +331,12 @@ def get_raws_from_data_and_intervals(patient_data_df: DataFrame, picks, interval
         picks:
         patient_data_df:
         intervals:
+        fast_dev_mode:
 
     Returns:
 
     """
+    config = get_config()
     dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
     raws = []
     patient_data_df_rows = list(patient_data_df.iterrows())
@@ -362,13 +369,12 @@ def get_patient_data_index(patient: str) -> DataFrame:
     """
     Return a DataFrame of patient's data index
     Args:
-        package: package name
         patient: patient name
-        intervals: time intervals
 
     Returns:
 
     """
+    config = get_config()
     package = get_package_from_patient(patient)
 
     dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
@@ -392,6 +398,7 @@ def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Inte
     Returns:
 
     """
+    config = get_config()
     dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
     data_index_path = f"{dataset_path}/data_index.csv"
 
@@ -404,8 +411,8 @@ def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Inte
     return [raw for raw in raws if raw]  # remove None values
 
 
-
 def get_package_from_patient(patient: str) -> str:
+    config = get_config()
     dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
     patients_index_path = f"{dataset_path}/patients_index.csv"
     patients_df = pd.read_csv(patients_index_path)
@@ -414,8 +421,9 @@ def get_package_from_patient(patient: str) -> str:
     package = patient_row.item()
     return package
 
+
 def get_time_as_str(fmt=None):
-    if fmt == None:
-        iso_8601_format = '%Y%m%dT%H%M%S'  # e.g., 20211119T221000
+    iso_8601_format = '%Y%m%dT%H%M%S'  # e.g., 20211119T221000
+    if fmt is None:
         fmt = iso_8601_format
-    return datetime.now().strftime(iso_8601_format)
+    return datetime.now().strftime(fmt)

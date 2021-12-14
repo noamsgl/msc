@@ -13,7 +13,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import StandardScaler
 
 from msc.data_utils import get_interictal_intervals, get_preictal_intervals
-from msc.data_utils.load import config, get_package_from_patient, get_patient_data_index, \
+from msc.data_utils.load import get_package_from_patient, get_patient_data_index, \
     get_raws_from_data_and_intervals, get_interval_from_raw, get_time_as_str
 
 
@@ -105,7 +105,7 @@ def intervals_to_windows(intervals, time_minutes=5):
     return list(chain.from_iterable(windows))  # chain together sublists
 
 
-def write_metadata(data_dir, pat_id, picks, fast_dev_mode, dataset_timestamp, features_desc):
+def write_metadata(data_dir, pat_id, picks, config, fast_dev_mode, dataset_timestamp, features_desc):
     # The path of the metadata file
     path = os.path.join(data_dir, 'dataset.txt')
 
@@ -120,6 +120,11 @@ def write_metadata(data_dir, pat_id, picks, fast_dev_mode, dataset_timestamp, fe
         file.write(f'Patient Id: {pat_id}\n')
         file.write(f'Features Type: {features_desc}\n')
         file.write(f'Channel Selection: {picks}\n')
+        file.write(f'Resample Frequency: {config.get("DATA", "RESAMPLE")}\n')
+        file.write(f'Preictal Min. Diff. (hours): {config.get("DATA", "PREICTAL_MIN_DIFF_HOURS")}\n')
+        file.write(f'Interictal Min. Diff. (hours): {config.get("DATA", "INTERICTAL_MIN_DIFF_HOURS")}\n')
+        file.write(f'Preictal Label: {config.get("DATA", "PREICTAL_LABEL")}\n')
+        file.write(f'Interictal Label: {config.get("DATA", "INTERICTAL_LABEL")}\n')
 
 
 
@@ -142,7 +147,7 @@ def extract_feature_from_numpy(X: ndarray, selected_func: str, sfreq, frame_leng
     return X
 
 
-def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, fast_dev_mode=False):
+def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, config, fast_dev_mode=False):
     """
     Gets the features Xs and labels Ys for a partitioned and feature extracted dataset
     Args:
@@ -183,7 +188,7 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, fast_
     data_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}/{config.get('DATA', 'DATASET')}/{selected_func}/{package}/{patient}/{dataset_timestamp}"
     print(f"dumping results to {data_dir}")
     os.makedirs(data_dir, exist_ok=True)
-    write_metadata(data_dir, patient, picks, fast_dev_mode, dataset_timestamp, selected_func)
+    write_metadata(data_dir, patient, picks, config, fast_dev_mode, dataset_timestamp, selected_func)
 
     samples_df = pd.DataFrame(columns=['package', 'patient', 'interval',
                                        'window_id', 'fname', 'label', 'label_desc'])
