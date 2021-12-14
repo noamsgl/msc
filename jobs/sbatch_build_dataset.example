@@ -21,7 +21,8 @@ echo -e "\nSLURM_JOBID:\t\t" $SLURM_JOBID
 echo -e "SLURM_JOB_NODELIST:\t" $SLURM_JOB_NODELIST "\n\n"
 
 ### Start your code below ####
+### optional features: ['max_cross_corr', 'phase_lock_val', 'nonlin_interdep', 'time_corr', 'spect_corr']
+
 module load anaconda				### load anaconda module (must be present when working with conda environments)
 source activate msc				### activate a conda environment, replace my_env with your conda environment
-python scripts/psp/build_dataset.py				### execute python script – replace with your own command
-
+python scripts/psp/build_dataset.py -p pat_3500 -f nonlin_interdep
