@@ -164,6 +164,14 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
         print(f"WARNING! {fast_dev_mode=} !!! Results are incomplete.")
     package = get_package_from_patient(patient)
 
+    data_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}/{config.get('DATA', 'DATASET')}/{selected_func}/{package}/{patient}/{dataset_timestamp}"
+    print(f"dumping results to {data_dir}")
+    os.makedirs(data_dir, exist_ok=True)
+
+    samples_df = pd.DataFrame(columns=['package', 'patient', 'interval',
+                                       'window_id', 'fname', 'label', 'label_desc'])
+    counter = itertools.count()
+
     print(f"getting {selected_func=} for {patient=} from {package=}")
     # get intervals
     preictal_intervals = get_preictal_intervals(package, patient, fast_dev_mode)
@@ -179,20 +187,11 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
 
     # get patient data files
     patient_data_df = get_patient_data_index(patient)
+    # load preictal data
     preictal_raws = get_raws_from_data_and_intervals(patient_data_df, picks, preictal_window_intervals, fast_dev_mode)
     print(f"{preictal_raws=}")
-    interictal_raws = get_raws_from_data_and_intervals(patient_data_df, picks, interictal_window_intervals,
-                                                       fast_dev_mode)
-    print(f"{interictal_raws}")
-
-    data_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}/{config.get('DATA', 'DATASET')}/{selected_func}/{package}/{patient}/{dataset_timestamp}"
-    print(f"dumping results to {data_dir}")
-    os.makedirs(data_dir, exist_ok=True)
     write_metadata(data_dir, patient, preictal_raws[0].info["ch_names"], config, fast_dev_mode, dataset_timestamp, selected_func)
 
-    samples_df = pd.DataFrame(columns=['package', 'patient', 'interval',
-                                       'window_id', 'fname', 'label', 'label_desc'])
-    counter = itertools.count()
 
     print("starting to process preictal raws")
     for raw in preictal_raws[:2 if fast_dev_mode else len(preictal_raws)]:
@@ -216,6 +215,12 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
         X = extract_feature_from_numpy(X, selected_func, float(config.get("DATA", "RESAMPLE")))
         pickle.dump(X, open(fname, 'wb'))
 
+    # clear memory from preictal raws
+    del preictal_raws
+
+    interictal_raws = get_raws_from_data_and_intervals(patient_data_df, picks, interictal_window_intervals,
+                                                       fast_dev_mode)
+    print(f"{interictal_raws}")
     print("starting to process interictal raws")
     for raw in interictal_raws[:2 if fast_dev_mode else len(interictal_intervals)]:
         interval = get_interval_from_raw(raw)
