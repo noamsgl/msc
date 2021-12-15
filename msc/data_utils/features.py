@@ -222,7 +222,7 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
                                                        fast_dev_mode)
     print(f"{interictal_raws}")
     print("starting to process interictal raws")
-    for raw in interictal_raws[:2 if fast_dev_mode else len(interictal_intervals)]:
+    for raw in interictal_raws[:2 if fast_dev_mode else len(interictal_raws)]:
         interval = get_interval_from_raw(raw)
         window_id = next(counter)
         fname = f"{data_dir}/window_{window_id}.pkl"
