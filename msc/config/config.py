@@ -1,11 +1,12 @@
 import configparser
 import os.path
+from configparser import ConfigParser
 
 import git
 from git import InvalidGitRepositoryError
 
 
-def get_config():
+def get_config() -> ConfigParser:
     # read local file `config.ini` from root_dir. If root_dir not given, will use root of git repository
     try:
         repo = git.Repo('.', search_parent_directories=True)
