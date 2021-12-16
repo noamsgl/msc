@@ -43,8 +43,6 @@ class PSPDataset(predictionDataset):
             dataset_dir:
         """
         super().__init__()
-        self.labels = None
-        self.training_set = None
         self.dataset_dir = dataset_dir
         self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col='window_id')
 
@@ -57,14 +55,16 @@ class PSPDataset(predictionDataset):
                     assert isinstance(x, ndarray), "error: the file loaded is not a numpy array"
                     yield window_id, x.reshape(-1)
 
-        self.windows_dict = {window_id: x for window_id, x in
-                             file_loader()}
-        self.samples_df["x"] = self.samples_df.apply(lambda sample: self.windows_dict[sample.name].reshape(-1), axis=1)
+        windows_dict = {window_id: x for window_id, x in file_loader()}
+        self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name].reshape(-1), axis=1)
 
-        self.X = np.vstack(self.samples_df.x)
         # self.labels = list(self.samples_df.label)
-        self.labels = list(self.samples_df.label_desc)
 
+    def get_X(self):
+        return np.vstack(self.samples_df.x)
+
+    def get_labels(self):
+        return list(self.samples_df.label_desc)
 
 
 if __name__ == '__main__':

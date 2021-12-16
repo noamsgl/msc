@@ -27,6 +27,7 @@ nitime = "*"
 pyqt5 = "*"
 portion = "*"
 mne-features = "*"
+xgboost = "*"
 
 [dev-packages]
 paramiko = "*"
