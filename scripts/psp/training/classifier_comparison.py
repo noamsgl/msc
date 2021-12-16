@@ -2,25 +2,21 @@
 #              Andreas Müller
 # Modified for documentation by Jaques Grobler
 # License: BSD 3 clause
-
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
-from sklearn.model_selection import train_test_split, cross_validate
-from sklearn.preprocessing import StandardScaler
-from sklearn.datasets import make_moons, make_circles, make_classification
-from sklearn.neural_network import MLPClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
+import pandas as pd
+import seaborn as sns
+from numpy import ndarray
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.naive_bayes import GaussianNB
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-
-import pandas as pd
-
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 # load data
 from tqdm import tqdm
 
@@ -30,7 +26,6 @@ data_dir = r"C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae\max_cross
 
 dataset = PSPDataset(data_dir)
 X, labels = dataset.get_X(), dataset.get_labels()
-
 
 names = [
     "Nearest Neighbors",
@@ -58,7 +53,6 @@ classifiers = [
     QuadraticDiscriminantAnalysis(),
 ]
 
-
 datasets = [
     (X, labels),
 ]
@@ -73,13 +67,28 @@ for ds_cnt, ds in enumerate(datasets):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.4, random_state=42
     )
-
+    results = pd.DataFrame()
     # iterate over classifiers
-    for name, clf in tqdm(list(zip(names, classifiers))):
+    for name, clf in tqdm(list(zip(names, classifiers)), desc="iterating over classifiers"):
         clf.fit(X_train, y_train)
         scoring = ['precision', 'recall', 'roc_auc']
-        cv_results = cross_validate(clf, X_test, y_test, cv=5, scoring=scoring)
-        results.append((name, clf, cv_results))
+        cv_results = cross_validate(clf, X_test, y_test, cv=5, scoring=scoring, return_estimator=True)
+        cv_results_df = pd.DataFrame(cv_results)
+        cv_results_df["name"] = name
+        results = results.append(cv_results_df)
 
-print(results)
+# results = results.set_index('estimator')
+# dfg = results.groupby('estimator')
+# results_df = pd.DataFrame(results, columns=["classifier_name", "cv_results"])
+# results_df = pd.concat([results_df.drop(['cv_results'], axis=1), results_df['cv_results'].apply(pd.Series)], axis=1)
 
+# as labelled index
+# results_df = results_df.set_index("classifier_name")
+
+# results = {
+#     'x': results_df.classifier_name,
+#     'y': results_df.test_precision.apply(np.mean)
+# }
+# sns.barplot(x='x', y='y', data=results)
+# results_df["precision_mean"] = results_df["test_precision"].apply(np.mean)
+# sns.catplot(x="classifier_name", y="precision_mean", kind="box", data=results_df)
