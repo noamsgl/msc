@@ -60,11 +60,19 @@ class PSPDataset(predictionDataset):
 
         # self.labels = list(self.samples_df.label)
 
+    def get_y(self):
+        return
+
     def get_X(self):
         return np.vstack(self.samples_df.x)
 
-    def get_labels(self):
-        return list(self.samples_df.label_desc)
+    def get_labels(self, format='num'):
+        if format == 'desc':
+            return list(self.samples_df.label_desc)
+        elif format == 'num':
+            return list(self.samples_df.label)
+        else:
+            raise ValueError("incorrect format")
 
 
 if __name__ == '__main__':
