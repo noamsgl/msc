@@ -31,8 +31,6 @@ data_dir = r"C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae\max_cross
 dataset = PSPDataset(data_dir)
 X, labels = dataset.get_X(), dataset.get_labels()
 
-#
-h = 0.02  # step size in the mesh
 
 names = [
     "Nearest Neighbors",
@@ -59,21 +57,12 @@ classifiers = [
     GaussianNB(),
     QuadraticDiscriminantAnalysis(),
 ]
-#
-# X, y = make_classification(
-#     n_features=2, n_redundant=0, n_informative=2, random_state=1, n_clusters_per_class=1
-# )
-# rng = np.random.RandomState(2)
-# X += 2 * rng.uniform(size=X.shape)
-# linearly_separable = (X, y)
 
 
 datasets = [
     (X, labels),
-    # linearly_separable,
 ]
-figure = plt.figure(figsize=(27, 9))
-i = 1
+
 # iterate over datasets
 results = []
 for ds_cnt, ds in enumerate(datasets):
