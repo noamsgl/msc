@@ -1,12 +1,17 @@
 import os
 import pickle
 import re
+import sys
+from tkinter import messagebox
+from tkinter.filedialog import askdirectory
+from tkinter.simpledialog import askstring
 
 import matplotlib.pyplot as plt
-import pandas as pd
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from numpy import ndarray
 from tqdm import tqdm
+
+from msc.config import get_config
 
 
 def save_pattern_plot(X: ndarray, patient_name: str, feature_name: str, window_name: str, output_path: str):
@@ -61,6 +66,24 @@ def imshow_entire_dataset_to_file(dataset_path: str, patient_name: str, feature_
 
 
 if __name__ == '__main__':
-    dataset_path = r"/cs_storage/noamsi/results/epilepsiae/max_cross_corr/surfCO/pat_3500/20211213T182128/"
-    print(f"beginning imshow entire dataset with {dataset_path=}")
-    imshow_entire_dataset_to_file(dataset_path, 'pat_3500', feature_name='max_cross_corr')
+    if not messagebox.askokcancel(title='PSP',
+                                  message="Welcome to the Physiological Signal Processing dataset image converter!\n"
+                                          "Please select the dataset directory:"):
+        sys.exit(-1)
+
+    # get the CurrentStudy dataset directory
+    feature_name = askstring('PSP', 'feature_name', initialvalue='phase_lock_val')
+    patient_name = askstring('PSP', 'patient_name', initialvalue='pat_3500')
+    config = get_config()
+    results_dir = config.get("RESULTS", "RESULTS_DIR_LOCAL")
+    datasets_dir = f"{results_dir}/{config.get('DATA', 'DATASET')}/{feature_name}/surfCO/{patient_name}"
+
+
+    init_dir = os.getcwd()
+    # show an "Open" dialog box and return the path to the selected file
+    data_dir = askdirectory(initialdir=datasets_dir)
+    if not data_dir:
+        sys.exit(-1)
+
+    print(f"beginning imshow entire dataset with {data_dir=}")
+    imshow_entire_dataset_to_file(data_dir, patient_name=patient_name, feature_name=feature_name)
