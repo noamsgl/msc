@@ -80,19 +80,3 @@ for ds_cnt, ds in enumerate(datasets):
 
 results["fold"] = results.index
 results = results.set_index('name')
-# results.to_csv('results_1.csv')
-# results = results.set_index('estimator')
-# dfg = results.groupby('estimator')
-# results_df = pd.DataFrame(results, columns=["classifier_name", "cv_results"])
-# results_df = pd.concat([results_df.drop(['cv_results'], axis=1), results_df['cv_results'].apply(pd.Series)], axis=1)
-
-# as labelled index
-# results_df = results_df.set_index("classifier_name")
-
-# results = {
-#     'x': results_df.classifier_name,
-#     'y': results_df.test_precision.apply(np.mean)
-# }
-# sns.barplot(x='x', y='y', data=results)
-# results_df["precision_mean"] = results_df["test_precision"].apply(np.mean)
-# sns.catplot(x="classifier_name", y="precision_mean", kind="box", data=results_df)
