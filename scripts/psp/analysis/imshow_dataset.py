@@ -5,10 +5,23 @@ import re
 import matplotlib.pyplot as plt
 import pandas as pd
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from numpy import ndarray
 from tqdm import tqdm
 
 
-def save_pattern_plot(X, patient_name, feature_name, window_name, output_path):
+def save_pattern_plot(X: ndarray, patient_name: str, feature_name: str, window_name: str, output_path: str):
+    """
+    Saves to disk a plot of a single feature pattern
+    Args:
+        X:
+        patient_name:
+        feature_name:
+        window_name:
+        output_path:
+
+    Returns:
+
+    """
     plt.clf()
     plt.title(f"{feature_name}\nfor {patient_name}, {window_name}")
     ax = plt.subplot()
@@ -21,10 +34,19 @@ def save_pattern_plot(X, patient_name, feature_name, window_name, output_path):
     plt.savefig(output_path)
 
 
-def imshow_entire_dataset_to_file(dataset_path, patient_name, feature_name):
+def imshow_entire_dataset_to_file(dataset_path: str, patient_name: str, feature_name: str):
+    """
+    Converts windows to plots on disk for entire dataset
+    Args:
+        dataset_path:
+        patient_name:
+        feature_name:
+
+    Returns:
+
+    """
     images_dir = f"{dataset_path}/images/"
     os.makedirs(images_dir, exist_ok=True)
-    samples_df = pd.read_csv(f"{dataset_path}/dataset.csv")
     for root, dirs, files in os.walk(dataset_path):
         for name in tqdm(files, desc="saving images to disk"):
             if os.path.splitext(name)[1] == ".pkl":
