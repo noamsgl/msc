@@ -1,10 +1,9 @@
+import glob
 from datetime import datetime
 
 import pandas as pd
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -14,15 +13,36 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
 
+from msc.config import get_config
 from msc.dataset.dataset import PSPDataset
 
 # initialize save param
-save_to_disk = False
-# load data
-data_dir = r"C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae\max_cross_corr\surfCO\pat_3500\20211213T182128"
+save_to_disk = True
 
-dataset = PSPDataset(data_dir)
-X, labels = dataset.get_X(), dataset.get_labels()
+# get config
+config = get_config()
+
+
+# load data
+# initialize datasets
+feature_names = ['max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr']
+patient_names = ['pat_3500', 'pat_3700', 'pat_7200']
+index = pd.MultiIndex.from_product([feature_names, patient_names], names=["feature_name", "patient_name"])
+datasets_df = pd.DataFrame(index=index).reset_index()
+
+results_dir = config.get("RESULTS", "RESULTS_DIR_LOCAL")
+
+
+def get_data_dir(row):
+    patient_dir = f"{config.get('RESULTS', 'RESULTS_DIR_LOCAL')}/{config.get('DATA', 'DATASET')}" \
+                  f"/{row['feature_name']}/surfCO/{row['patient_name']}"
+    globbed = sorted(glob.glob(patient_dir + '/*'), reverse=True)
+    assert len(globbed) > 0, f"Error: the dataset {row} could not be found"
+    data_dir = f"{globbed[0]}"
+    return data_dir
+
+
+datasets_df['data_dir'] = datasets_df.apply(get_data_dir, axis=1)
 
 # initialize classifier names
 names = [
@@ -52,38 +72,39 @@ classifiers = [
     QuadraticDiscriminantAnalysis(),
 ]
 
-# initialize datasets
-datasets = [
-    (X, labels),
-]
-
 # iterate over datasets
 num_folds = 5
-results = pd.DataFrame()
+scoring = ['precision', 'recall', 'roc_auc']
+score_cols = [f'test_{sc}' for sc in scoring]
+results = pd.DataFrame(columns=["dataset"])
 
-for ds_cnt, ds in enumerate(datasets):
+for idx, ds in tqdm(list(datasets_df.iterrows()), desc="iterating datasets"):
+    print(f"beginning {ds=}")
+    # load data
+    dataset = PSPDataset(ds['data_dir'])
+    X, y = dataset.get_X(), dataset.get_labels()
+
     # preprocess dataset, split into training and test part
-    X, y = ds
     X = StandardScaler().fit_transform(X)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.4, random_state=42
     )
-    scoring = ['precision', 'recall', 'roc_auc']
-    score_cols = [f'test_{sc}' for sc in scoring]
+
     # iterate over classifiers
+    cv_results_dfs = []
     for name, clf in tqdm(list(zip(names, classifiers)), desc="iterating over classifiers"):
         clf.fit(X_train, y_train)
         cv_results = cross_validate(clf, X_test, y_test, cv=num_folds, scoring=scoring, return_estimator=True)
         cv_results_df = pd.DataFrame(cv_results)
-        cv_results_df["name"] = name
-        cv_results_df["ds_cnt"] = ds_cnt
-        results = results.append(cv_results_df)
 
-results["fold"] = results.index
-results = results.set_index('name')
+        # cross merge cv_results with dataset information
+        cv_results_df = pd.merge(cv_results_df, ds.to_frame().transpose(), how='cross')
+        cv_results_df = cv_results_df.rename_axis('fold').reset_index()
+        cv_results_dfs.append(cv_results_df)
+
+    results = pd.concat(cv_results_dfs)
 
 print(f'{results=}')
 
 if save_to_disk:
     results.to_csv(f'results_{datetime.now()}.csv')
-
