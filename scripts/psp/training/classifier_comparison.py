@@ -14,6 +14,7 @@ from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
 
 from msc.config import get_config
+from msc.data_utils.load import get_time_as_str
 from msc.dataset.dataset import PSPDataset
 
 # initialize save param
@@ -77,7 +78,7 @@ num_folds = 5
 scoring = ['precision', 'recall', 'roc_auc']
 score_cols = [f'test_{sc}' for sc in scoring]
 results = pd.DataFrame(columns=["dataset"])
-
+dataset_results_dfs = []
 for idx, ds in tqdm(list(datasets_df.iterrows()), desc="iterating datasets"):
     print(f"beginning {ds=}")
     # load data
@@ -102,9 +103,10 @@ for idx, ds in tqdm(list(datasets_df.iterrows()), desc="iterating datasets"):
         cv_results_df = cv_results_df.rename_axis('fold').reset_index()
         cv_results_dfs.append(cv_results_df)
 
-    results = pd.concat(cv_results_dfs)
+    dataset_results_df = pd.concat(cv_results_dfs)
+    dataset_results_dfs.append(dataset_results_df)
 
-print(f'{results=}')
+results = pd.concat(dataset_results_dfs)
 
 if save_to_disk:
-    results.to_csv(f'results_{datetime.now()}.csv')
+    results.to_csv(f'results_{get_time_as_str()}.csv')
