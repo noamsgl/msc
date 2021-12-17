@@ -58,7 +58,7 @@ datasets = [
 ]
 
 # iterate over datasets
-results = []
+num_folds = 5
 for ds_cnt, ds in enumerate(datasets):
     # print(f"{ds_cnt=}, {ds=}")
     # preprocess dataset, split into training and test part
@@ -68,15 +68,19 @@ for ds_cnt, ds in enumerate(datasets):
         X, y, test_size=0.4, random_state=42
     )
     results = pd.DataFrame()
+    scoring = ['precision', 'recall', 'roc_auc']
+    score_cols = [f'test_{sc}' for sc in scoring]
     # iterate over classifiers
     for name, clf in tqdm(list(zip(names, classifiers)), desc="iterating over classifiers"):
         clf.fit(X_train, y_train)
-        scoring = ['precision', 'recall', 'roc_auc']
-        cv_results = cross_validate(clf, X_test, y_test, cv=5, scoring=scoring, return_estimator=True)
+        cv_results = cross_validate(clf, X_test, y_test, cv=num_folds, scoring=scoring, return_estimator=True)
         cv_results_df = pd.DataFrame(cv_results)
         cv_results_df["name"] = name
         results = results.append(cv_results_df)
 
+results["fold"] = results.index
+results = results.set_index('name')
+# results.to_csv('results_1.csv')
 # results = results.set_index('estimator')
 # dfg = results.groupby('estimator')
 # results_df = pd.DataFrame(results, columns=["classifier_name", "cv_results"])
