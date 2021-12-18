@@ -19,11 +19,12 @@ def plot_results_times(results_fpath, timing_cols=('fit_time', 'score_time')):
     return means.plot.bar(yerr=errors, xlabel='Classifier Name', title='Computation Time for Different Classifiers')
 
 
-results_fpath = r"C:\Users\noam\Repositories\noamsgl\msc\scripts\psp\training\results_2.csv"
+if __name__ == '__main__':
+    results_fpath = r"C:\Users\noam\Repositories\noamsgl\msc\scripts\psp\training\results_2.csv"
 
-plot_results_times(results_fpath)
-plt.xticks(rotation=45)
+    plot_results_times(results_fpath)
+    plt.xticks(rotation=45)
 
-plt.tight_layout()
+    plt.tight_layout()
 
-plt.show()
+    plt.show()

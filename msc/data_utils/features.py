@@ -120,11 +120,11 @@ def write_metadata(data_dir, pat_id, picks, config, fast_dev_mode, dataset_times
         file.write(f'Patient Id: {pat_id}\n')
         file.write(f'Features Type: {features_desc}\n')
         file.write(f'Channel Selection: {picks}\n')
-        file.write(f'Resample Frequency: {config.get("DATA", "RESAMPLE")}\n')
-        file.write(f'Preictal Min. Diff. (hours): {config.get("TASK", "PREICTAL_MIN_DIFF_HOURS")}\n')
-        file.write(f'Interictal Min. Diff. (hours): {config.get("TASK", "INTERICTAL_MIN_DIFF_HOURS")}\n')
-        file.write(f'Preictal Label: {config.get("TASK", "PREICTAL_LABEL")}\n')
-        file.write(f'Interictal Label: {config.get("TASK", "INTERICTAL_LABEL")}\n')
+        file.write(f"Resample Frequency: {config['TASK']['RESAMPLE']}\n")
+        file.write(f"Preictal Min. Diff. (hours): {config['TASK']['PREICTAL_MIN_DIFF_HOURS']}\n")
+        file.write(f"Interictal Min. Diff. (hours): {config['TASK']['INTERICTAL_MIN_DIFF_HOURS']}\n")
+        file.write(f"Preictal Label: {config['TASK']['PREICTAL_LABEL']}\n")
+        file.write(f"Interictal Label: {config['TASK']['INTERICTAL_LABEL']}\n")
 
 
 
@@ -164,7 +164,7 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
         print(f"WARNING! {fast_dev_mode=} !!! Results are incomplete.")
     package = get_package_from_patient(patient)
 
-    data_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}/{config.get('DATA', 'DATASET')}/{selected_func}/{package}/{patient}/{dataset_timestamp}"
+    data_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/{selected_func}/{package}/{patient}/{dataset_timestamp}"
     print(f"dumping results to {data_dir}")
     os.makedirs(data_dir, exist_ok=True)
 
@@ -174,31 +174,33 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
 
     print(f"getting {selected_func=} for {patient=} from {package=}")
     # get intervals
-    preictal_intervals = get_preictal_intervals(package, patient, fast_dev_mode)
-    print(f"{preictal_intervals=}")
-    interictal_intervals = get_interictal_intervals(package, patient, fast_dev_mode)
-    print(f"{interictal_intervals=}")
+    preictal_intervals = get_preictal_intervals(package, patient)
+    print(f"{len(preictal_intervals)=}")
+    interictal_intervals = get_interictal_intervals(package, patient)
+    print(f"{len(interictal_intervals)=}")
 
     # get windowed intervals
     preictal_window_intervals = intervals_to_windows(preictal_intervals)
-    print(f"{preictal_window_intervals=}")
+    preictal_window_intervals = preictal_window_intervals[:2 if fast_dev_mode else len(preictal_window_intervals)]
+    print(f"{len(preictal_window_intervals)=}")
     interictal_window_intervals = intervals_to_windows(interictal_intervals)
-    print(f"{interictal_window_intervals=}")
+    interictal_window_intervals = interictal_window_intervals[:2 if fast_dev_mode else len(interictal_window_intervals)]
+    print(f"{len(interictal_window_intervals)=}")
 
     # get patient data files
     patient_data_df = get_patient_data_index(patient)
     # load preictal data
     preictal_raws = get_raws_from_data_and_intervals(patient_data_df, picks, preictal_window_intervals, fast_dev_mode)
-    print(f"{preictal_raws=}")
+    print(f"{len(preictal_raws)=}")
     write_metadata(data_dir, patient, preictal_raws[0].info["ch_names"], config, fast_dev_mode, dataset_timestamp, selected_func)
 
 
-    print("starting to process preictal raws")
-    for raw in preictal_raws[:2 if fast_dev_mode else len(preictal_raws)]:
+    print("starting to extract features for preictal raws")
+    for raw in preictal_raws:
         interval = get_interval_from_raw(raw)
         window_id = next(counter)
         fname = f"{data_dir}/window_{window_id}.pkl"
-        y = config.get("DATA", "PREICTAL_LABEL")
+        y = config['TASK']['PREICTAL_LABEL']
         row = {"package": package,
                "patient": patient,
                "interval": interval,
@@ -210,9 +212,9 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
         X = raw.get_data()
         X = StandardScaler().fit_transform(X)
         print(f"dumping {window_id=} to {fname=}")
-        # X = mne_features.feature_extraction.FeatureExtractor(sfreq=config.get("DATA", "RESAMPLE"),
+        # X = mne_features.feature_extraction.FeatureExtractor(sfreq=config['TASK']['RESAMPLE'],
         #                                                      selected_funcs=selected_funcs).fit_transform(X)
-        X = extract_feature_from_numpy(X, selected_func, float(config.get("DATA", "RESAMPLE")))
+        X = extract_feature_from_numpy(X, selected_func, float(config['TASK']['RESAMPLE']))
         pickle.dump(X, open(fname, 'wb'))
 
     # clear memory from preictal raws
@@ -221,12 +223,12 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
     interictal_raws = get_raws_from_data_and_intervals(patient_data_df, picks, interictal_window_intervals,
                                                        fast_dev_mode)
     print(f"{interictal_raws}")
-    print("starting to process interictal raws")
-    for raw in interictal_raws[:2 if fast_dev_mode else len(interictal_raws)]:
+    print("starting to extract features for interictal raws")
+    for raw in interictal_raws:
         interval = get_interval_from_raw(raw)
         window_id = next(counter)
         fname = f"{data_dir}/window_{window_id}.pkl"
-        y = config.get("TASK", "INTERICTAL_LABEL")
+        y = config['TASK']['INTERICTAL_LABEL']
         row = {"package": package,
                "patient": patient,
                "interval": interval,
@@ -237,9 +239,9 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
         samples_df = samples_df.append(row, ignore_index=True)
         X = raw.get_data()
         X = StandardScaler().fit_transform(X)
-        # X = mne_features.feature_extraction.FeatureExtractor(sfreq=float(config.get("DATA", "RESAMPLE")),
+        # X = mne_features.feature_extraction.FeatureExtractor(sfreq=float(config['TASK']['RESAMPLE']),
         #                                                      selected_funcs=selected_funcs).fit_transform(X)
-        X = extract_feature_from_numpy(X, selected_func, float(config.get("DATA", "RESAMPLE")))
+        X = extract_feature_from_numpy(X, selected_func, float(config['TASK']['RESAMPLE']))
         print(f"dumping {window_id=} to {fname=}")
         pickle.dump(X, open(fname, 'wb'))
     samples_df_path = f"{data_dir}/dataset.csv"

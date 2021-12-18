@@ -94,6 +94,8 @@ class PSPDataset(predictionDataset):
         """
         super().__init__()
         self.dataset_dir = dataset_dir
+        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
+        assert os.path.isfile(f"{dataset_dir}/dataset.csv"), "error: dataset.csv file not found"
         self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col='window_id')
 
         def file_loader():
@@ -110,8 +112,6 @@ class PSPDataset(predictionDataset):
 
         # self.labels = list(self.samples_df.label)
 
-    def get_y(self):
-        return
 
     def get_X(self):
         return np.vstack(self.samples_df.x)
@@ -123,11 +123,3 @@ class PSPDataset(predictionDataset):
             return list(self.samples_df.label)
         else:
             raise ValueError("incorrect format")
-
-
-if __name__ == '__main__':
-    config: ConfigParser = get_config()
-    dataset_dir: str = config.get("DATA", "DATASET_PATH_LOCAL")
-    dataset: PSPDataset = PSPDataset(dataset_dir)
-
-    Xs, Ys = dataset.training_set

@@ -238,11 +238,11 @@ def load_raw_from_data_row_and_interval(row: Series, interval: Interval) -> Raw:
 
     """
     config = get_config()
-    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
+    dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
     # load raw data
     raw_path = f"{dataset_path}/{row['package']}/{row['patient']}/{row['admission']}/{row['recording']}/{row['fname']}"
     raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
-    raw = raw.resample(config.get("DATA", "RESAMPLE"))
+    raw = raw.resample(config['TASK']['RESAMPLE'])
     # trim interval to intersection with data
     interval = interval.intersection(portion.closedopen(raw.info["meas_date"].replace(tzinfo=None),
                                                         raw.info["meas_date"].replace(tzinfo=None) + timedelta(
@@ -337,23 +337,27 @@ def get_raws_from_data_and_intervals(patient_data_df: DataFrame, picks, interval
 
     """
     config = get_config()
-    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
+    dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
     raws = []
     patient_data_df_rows = list(patient_data_df.iterrows())
-    if fast_dev_mode:
-        patient_data_df_rows = patient_data_df_rows[:1]
+    # if fast_dev_mode:
+    #     patient_data_df_rows = patient_data_df_rows[:1]
     for idx, row in tqdm(patient_data_df_rows, desc="loading patient data"):
-        # load raw data file
-        raw_path = f"{dataset_path}/{row['package']}/{row['patient']}/{row['admission']}/{row['recording']}/{row['fname']}"
-        raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
-        picks = [p for p in picks if p in raw.info["ch_names"]]
-        raw = raw.pick(picks)
-        raw = raw.resample(config.get("DATA", "RESAMPLE"))
 
         raw_interval = portion.closedopen(row["meas_date"], row["end_date"])
 
         intervals_during_raw = [interval for interval in intervals if
                                 interval in raw_interval]
+        if len(intervals_during_raw) == 0:
+            continue
+
+        # load raw data file
+        raw_path = f"{dataset_path}/{row['package']}/{row['patient']}/{row['admission']}/{row['recording']}/{row['fname']}"
+        raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
+        picks = [p for p in picks if p in raw.info["ch_names"]]
+        raw = raw.pick(picks)
+        raw = raw.resample(config['TASK']['RESAMPLE'])
+
 
         for interval in intervals_during_raw:
             # crop raw data to interval
@@ -377,7 +381,7 @@ def get_patient_data_index(patient: str) -> DataFrame:
     config = get_config()
     package = get_package_from_patient(patient)
 
-    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
+    dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
     data_index_path = f"{dataset_path}/data_index.csv"
 
     data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
@@ -399,7 +403,7 @@ def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Inte
 
     """
     config = get_config()
-    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
+    dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
     data_index_path = f"{dataset_path}/data_index.csv"
 
     data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
@@ -413,7 +417,7 @@ def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Inte
 
 def get_package_from_patient(patient: str) -> str:
     config = get_config()
-    dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
+    dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
     patients_index_path = f"{dataset_path}/patients_index.csv"
     patients_df = pd.read_csv(patients_index_path)
     patient_row = patients_df.loc[patients_df['pat_id'] == patient, 'package']

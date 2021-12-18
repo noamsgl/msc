@@ -20,37 +20,52 @@ from msc.config import get_config
 from msc.data_utils.features import save_dataset_to_disk
 from msc.data_utils.load import PicksOptions, get_time_as_str
 
-parser = argparse.ArgumentParser(description='build a eeg prediction dataset')
-parser.add_argument('-d', '--dev',
-                    action='store_true',
-                    help='whether to run in fast_dev_mode')
-parser.add_argument('-p', '--patient',
-                    action='append',
-                    help='patient id',
-                    required=True,
-                    default=[])
-parser.add_argument('-f', '--feature',
-                    action='append',
-                    help='which features to extract',
-                    required=True,
-                    default=[])
 
-args = parser.parse_args()
-fast_dev_mode = args.dev
-patients = args.patient
-features = args.feature
+def main(raw_args=None):
+    config = get_config()
 
-config = get_config()
-dataset_timestamp = get_time_as_str()
+    parser = argparse.ArgumentParser(description='build a eeg prediction dataset')
+    parser.add_argument('-d', '--dev',
+                        action='store_true',
+                        help='whether to run in fast_dev_mode')
+    parser.add_argument('-p', '--patient',
+                        action='append',
+                        help='patient id',
+                        required=True,
+                        default=[])
+    parser.add_argument('-f', '--feature',
+                        action='append',
+                        help='which features to extract',
+                        required=True,
+                        default=[])
+    parser.add_argument('-m', '--machine',
+                        help="which machine to get paths from (options 'LOCAL', 'BGUCLUSTER', 'MIRIAM')",
+                        required=False,
+                        default='MIRIAM')
+    parser.add_argument('-i', '--input',
+                        help="path to input raw data dir",
+                        required=False,
+                        default=config['PATH'][config['RAW_MACHINE']]['RAW_DATASET'])
+    parser.add_argument('-o', '--output',
+                        help="path to output results dir",
+                        required=False,
+                        default=config['PATH'][config['RESULTS_MACHINE']]['RESULTS'])
+    args = parser.parse_args(raw_args)
+    fast_dev_mode = args.dev
+    patients = args.patient
+    features = args.feature
 
-print(f"Starting {os.path.basename(__file__)} with {fast_dev_mode=} at time {dataset_timestamp}")
-dataset_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}"
-results_dir = f"{config.get('RESULTS', 'RESULTS_DIR')}"
+    dataset_timestamp = get_time_as_str()
 
-# patients = ["pat_9021002"]
-for selected_func in features:
-    for patient in patients:
-        # get package
-        picks = PicksOptions.common_channels
-        # picks = None
-        save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, config, fast_dev_mode=fast_dev_mode)
+    print(f"Starting {os.path.basename(__file__)} with {fast_dev_mode=} at time {dataset_timestamp}")
+
+    for selected_func in features:
+        for patient in patients:
+            # get package
+            picks = PicksOptions.common_channels
+            # picks = None
+            save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, config, fast_dev_mode=fast_dev_mode)
+
+
+if __name__ == '__main__':
+    main()

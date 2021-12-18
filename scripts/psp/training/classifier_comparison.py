@@ -1,5 +1,4 @@
 import glob
-from datetime import datetime
 
 import pandas as pd
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
@@ -23,7 +22,6 @@ save_to_disk = True
 # get config
 config = get_config()
 
-
 # load data
 # initialize datasets
 feature_names = ['max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr']
@@ -31,11 +29,11 @@ patient_names = ['pat_3500', 'pat_3700', 'pat_7200']
 index = pd.MultiIndex.from_product([feature_names, patient_names], names=["feature_name", "patient_name"])
 datasets_df = pd.DataFrame(index=index).reset_index()
 
-results_dir = config.get("RESULTS", "RESULTS_DIR_LOCAL")
+results_dir = config['PATH'][config['RESULTS_MACHINE']]['RESULTS']
 
 
 def get_data_dir(row):
-    patient_dir = f"{config.get('RESULTS', 'RESULTS_DIR_LOCAL')}/{config.get('DATA', 'DATASET')}" \
+    patient_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}" \
                   f"/{row['feature_name']}/surfCO/{row['patient_name']}"
     globbed = sorted(glob.glob(patient_dir + '/*'), reverse=True)
     assert len(globbed) > 0, f"Error: the dataset {row} could not be found"
