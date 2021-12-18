@@ -3,10 +3,12 @@ import pickle
 import re
 from configparser import ConfigParser
 
+import mne.io
 import numpy as np
 import pandas as pd
 from mne.io import Raw
 from numpy import ndarray
+from pandas import Series
 
 from msc.config import get_config
 
@@ -50,7 +52,7 @@ class RawDataset(baseDataset):
         self.patients_df = pd.read_csv(f"{dataset_dir}/patients_index.csv", index_col=0)
         self.seizures_df = pd.read_csv(f"{dataset_dir}/seizures_index.csv", index_col=0)
 
-    def get_random_sample(self, seconds=10) -> Raw:
+    def get_raw(self, data_row: Series, preload=False) -> Raw:
         """
         gets a random raw sample.
         Args:
@@ -59,8 +61,21 @@ class RawDataset(baseDataset):
         Returns:
 
         """
-        data_file = self.data_df.sample(1)
-        print(data_file)
+        raw_fpath = self._build_fpath_for_raw(data_row)
+        raw = mne.io.read_raw_nicolet(raw_fpath, ch_type='eeg', preload=preload)
+        return raw
+
+    def _build_fpath_for_raw(self, data_row) -> str:
+        """
+        return the fpath for the data row
+        Args:
+            data_row:
+
+        Returns:
+
+        """
+        return f'{self.dataset_dir}/{data_row.package.item()}/{data_row.patient.item()}/{data_row.admission.item()}/' \
+               f'{data_row.recording.item()}/{data_row.fname.item()}'
 
 
 class PSPDataset(predictionDataset):
