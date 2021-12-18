@@ -1,3 +1,4 @@
+"""fit a single classifier to a single dataset and plot a confusion matrix and roc curve"""
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split

@@ -28,6 +28,22 @@ class predictionDataset(baseDataset):
         super().__init__()
 
 
+class RawDataset(baseDataset):
+    """
+    A class for loading data in its raw form
+    """
+
+    def __init__(self, dataset_dir: str):
+        """
+        Initialize a raw dataset.
+        Lazy loading of data.
+        Args:
+            dataset_dir: path to the dataset dir (should be the packages)
+        """
+        self.dataset_dir = dataset_dir
+        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
+
+
 class PSPDataset(predictionDataset):
     """
     A class for Physiological Signal Processing Course Datasets
