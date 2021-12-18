@@ -62,7 +62,7 @@ def get_interictal_intervals(package: str, patient: str, fast_dev_mode: bool) ->
     Returns:
 
     """
-    min_diff = timedelta(hours=float(config.get('DATA', 'INTERICTAL_MIN_DIFF_HOURS')))
+    min_diff = timedelta(hours=float(config.get('TASK', 'INTERICTAL_MIN_DIFF_HOURS')))
     recording_start = get_recording_start(package, patient)
     recording_end = get_recording_end(package, patient)
 
@@ -90,7 +90,7 @@ def get_preictal_intervals(package: str, patient: str, fast_dev_mode: bool) -> L
 
     """
     onsets = get_seiz_onsets(package, patient)
-    preictals = [P.open(onset - timedelta(hours=float(config.get('DATA', 'PREICTAL_MIN_DIFF_HOURS'))), onset) for onset in onsets]
+    preictals = [P.open(onset - timedelta(hours=float(config.get('TASK', 'PREICTAL_MIN_DIFF_HOURS'))), onset) for onset in onsets]
     if fast_dev_mode:
         return preictals[:2]
     return preictals

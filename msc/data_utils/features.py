@@ -121,10 +121,10 @@ def write_metadata(data_dir, pat_id, picks, config, fast_dev_mode, dataset_times
         file.write(f'Features Type: {features_desc}\n')
         file.write(f'Channel Selection: {picks}\n')
         file.write(f'Resample Frequency: {config.get("DATA", "RESAMPLE")}\n')
-        file.write(f'Preictal Min. Diff. (hours): {config.get("DATA", "PREICTAL_MIN_DIFF_HOURS")}\n')
-        file.write(f'Interictal Min. Diff. (hours): {config.get("DATA", "INTERICTAL_MIN_DIFF_HOURS")}\n')
-        file.write(f'Preictal Label: {config.get("DATA", "PREICTAL_LABEL")}\n')
-        file.write(f'Interictal Label: {config.get("DATA", "INTERICTAL_LABEL")}\n')
+        file.write(f'Preictal Min. Diff. (hours): {config.get("TASK", "PREICTAL_MIN_DIFF_HOURS")}\n')
+        file.write(f'Interictal Min. Diff. (hours): {config.get("TASK", "INTERICTAL_MIN_DIFF_HOURS")}\n')
+        file.write(f'Preictal Label: {config.get("TASK", "PREICTAL_LABEL")}\n')
+        file.write(f'Interictal Label: {config.get("TASK", "INTERICTAL_LABEL")}\n')
 
 
 
@@ -226,7 +226,7 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
         interval = get_interval_from_raw(raw)
         window_id = next(counter)
         fname = f"{data_dir}/window_{window_id}.pkl"
-        y = config.get("DATA", "INTERICTAL_LABEL")
+        y = config.get("TASK", "INTERICTAL_LABEL")
         row = {"package": package,
                "patient": patient,
                "interval": interval,

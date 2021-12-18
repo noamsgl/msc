@@ -5,6 +5,7 @@ from configparser import ConfigParser
 
 import numpy as np
 import pandas as pd
+from mne.io import Raw
 from numpy import ndarray
 
 from msc.config import get_config
@@ -42,6 +43,24 @@ class RawDataset(baseDataset):
         """
         self.dataset_dir = dataset_dir
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
+        assert os.path.isfile(f"{dataset_dir}/data_index.csv"), "error: data_index.csv not found"
+        assert os.path.isfile(f"{dataset_dir}/patients_index.csv"), "error: patients_index.csv not found"
+        assert os.path.isfile(f"{dataset_dir}/seizures_index.csv"), "error: seizures_index.csv not found"
+        self.data_df = pd.read_csv(f"{dataset_dir}/data_index.csv", index_col=0)
+        self.patients_df = pd.read_csv(f"{dataset_dir}/patients_index.csv", index_col=0)
+        self.seizures_df = pd.read_csv(f"{dataset_dir}/seizures_index.csv", index_col=0)
+
+    def get_random_sample(self, seconds=10) -> Raw:
+        """
+        gets a random raw sample.
+        Args:
+            seconds:
+
+        Returns:
+
+        """
+        data_file = self.data_df.sample(1)
+        print(data_file)
 
 
 class PSPDataset(predictionDataset):
