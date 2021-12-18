@@ -1,7 +1,7 @@
+import glob
 import os
 import pickle
 import re
-from configparser import ConfigParser
 
 import mne.io
 import numpy as np
@@ -12,6 +12,30 @@ from pandas import Series
 
 from msc.config import get_config
 
+
+def get_datasets_df(feature_names=('max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr'),
+                    patient_names=('pat_3500', 'pat_3700', 'pat_7200')):
+    # get config
+    config = get_config()
+
+    # initialize datasets
+    feature_names = feature_names
+    patient_names = patient_names
+    index = pd.MultiIndex.from_product([feature_names, patient_names], names=["feature_name", "patient_name"])
+    datasets_df = pd.DataFrame(index=index).reset_index()
+
+    def get_data_dir(row):
+        patient_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}" \
+                      f"/{row['feature_name']}/surfCO/{row['patient_name']}"
+        globbed = sorted(glob.glob(patient_dir + '/*'), reverse=True)
+        assert len(globbed) > 0, f"Error: the dataset {row} could not be found"
+        data_dir = f"{globbed[0]}"
+        return data_dir
+
+    datasets_df['data_dir'] = datasets_df.apply(get_data_dir, axis=1)
+
+
+    return datasets_df
 
 class baseDataset:
     """
@@ -111,7 +135,6 @@ class PSPDataset(predictionDataset):
         self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name].reshape(-1), axis=1)
 
         # self.labels = list(self.samples_df.label)
-
 
     def get_X(self):
         return np.vstack(self.samples_df.x)
