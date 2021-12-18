@@ -14,7 +14,7 @@ from tqdm import tqdm
 from msc.config import get_config
 
 
-def plot_feature_window(X: ndarray, patient_name: str, feature_name: str, window_name: str, output_path: str=None):
+def plot_feature_window(X: ndarray, patient_name: str, feature_name: str, window_name: str, output_path: str=None, ax=None):
     """
     Saves to disk a plot of a single feature pattern
     Args:
@@ -27,16 +27,14 @@ def plot_feature_window(X: ndarray, patient_name: str, feature_name: str, window
     Returns:
 
     """
-    plt.clf()
-    plt.title(f"{feature_name}\nfor {patient_name}, {window_name}")
-    ax = plt.subplot()
+    ax.set_title(f"{feature_name}\nfor {patient_name}, {window_name}")
     im = ax.imshow(X)
-    plt.xlabel('time (5 s frames)')
-    plt.ylabel('index of channel pair')
+    ax.set_xlabel('time (5 s frames)')
+    ax.set_ylabel('index of channel pair')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
-    plt.show()
+    return None
 
 
 def save_pattern_plot(X: ndarray, patient_name: str, feature_name: str, window_name: str, output_path: str):
