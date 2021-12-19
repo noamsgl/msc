@@ -1,5 +1,3 @@
-import glob
-
 import pandas as pd
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
@@ -14,7 +12,7 @@ from tqdm import tqdm
 
 from msc.config import get_config
 from msc.data_utils.load import get_time_as_str
-from msc.dataset.dataset import PSPDataset
+from msc.dataset.dataset import PSPDataset, get_datasets_df
 
 
 def main(save_to_disk=True, feature_names=('max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr'),
@@ -27,20 +25,10 @@ def main(save_to_disk=True, feature_names=('max_cross_corr', 'phase_lock_val', '
     # initialize datasets
     feature_names = feature_names
     patient_names = patient_names
-    index = pd.MultiIndex.from_product([feature_names, patient_names], names=["feature_name", "patient_name"])
-    datasets_df = pd.DataFrame(index=index).reset_index()
 
-    results_dir = config['PATH'][config['RESULTS_MACHINE']]['RESULTS']
-
-    def get_data_dir(row):
-        patient_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}" \
-                      f"/{row['feature_name']}/surfCO/{row['patient_name']}"
-        globbed = sorted(glob.glob(patient_dir + '/*'), reverse=True)
-        assert len(globbed) > 0, f"Error: the dataset {row} could not be found"
-        data_dir = f"{globbed[0]}"
-        return data_dir
-
-    datasets_df['data_dir'] = datasets_df.apply(get_data_dir, axis=1)
+    datasets_df = get_datasets_df()
+    datasets_df = datasets_df.loc[
+        datasets_df['feature_name'].isin(feature_names) & datasets_df['patient_name'].isin(patient_names)]
 
     # initialize classifier names
     if classifier_names is None:
@@ -99,6 +87,7 @@ def main(save_to_disk=True, feature_names=('max_cross_corr', 'phase_lock_val', '
             cv_results_df = pd.DataFrame(cv_results)
 
             # cross merge cv_results with dataset information
+            cv_results_df["classifier_name"] = name
             cv_results_df = pd.merge(cv_results_df, ds.to_frame().transpose(), how='cross')
             cv_results_df = cv_results_df.rename_axis('fold').reset_index()
             cv_results_dfs.append(cv_results_df)

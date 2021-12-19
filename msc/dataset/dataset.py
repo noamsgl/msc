@@ -27,15 +27,16 @@ def get_datasets_df(feature_names=('max_cross_corr', 'phase_lock_val', 'spect_co
     def get_data_dir(row):
         patient_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}" \
                       f"/{row['feature_name']}/surfCO/{row['patient_name']}"
-        globbed = sorted(glob.glob(patient_dir + '/*'), reverse=True)
+        globbed = sorted(glob.glob(patient_dir + '/*'),
+                         reverse=False)  # if reverse is set to true, get most recent datasets
         assert len(globbed) > 0, f"Error: the dataset {row} could not be found"
         data_dir = f"{globbed[0]}"
         return data_dir
 
     datasets_df['data_dir'] = datasets_df.apply(get_data_dir, axis=1)
 
-
     return datasets_df
+
 
 class baseDataset:
     """
