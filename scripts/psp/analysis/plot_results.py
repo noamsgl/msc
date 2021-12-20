@@ -1,8 +1,12 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from msc.config import get_config
+
 
 def plot_results_score(results_row, patient_name, feature_name, score=('precision'), logy=False, ax=None, color=None):
+    """Plot a Bar Plot of classification results
+    """
     if ax is None:
         fig, ax = plt.figure()
     scoring_cols = [f'test_{score}']
@@ -14,6 +18,7 @@ def plot_results_score(results_row, patient_name, feature_name, score=('precisio
 
 
 def plot_results_time(results_row, patient_name, feature_name, time_col=('score_time'), logy=False, ax=None, color=None):
+
     if ax is None:
         fig, ax = plt.figure()
     results = results_row.loc[:, ['classifier_name'] + [time_col]]
@@ -41,11 +46,16 @@ def plot_results_times(results_fpath, timing_cols=('fit_time', 'score_time')):
 
 
 if __name__ == '__main__':
-    results_fpath = r"C:\Users\noam\Repositories\noamsgl\msc\scripts\psp\training\results_2.csv"
+    config = get_config()
+    results_fpath = f"{config['PATH']['LOCAL']['RESULTS']}/complete_results.csv"
     results = pd.read_csv(results_fpath)
 
-    plot_results_times(results)
-    plt.xticks(rotation=45)
+    selected_patient = "pat_3500"
+    selected_feature = "max_cross_corr"
+
+    results = results.set_index(['patient_name','feature_name']).loc[selected_patient, selected_feature]
+    fig, ax = plt.subplots(1)
+    plot_results_scores(results, ax=ax)
 
     plt.tight_layout()
 

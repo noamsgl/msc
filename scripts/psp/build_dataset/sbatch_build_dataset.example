@@ -25,4 +25,4 @@ echo -e "SLURM_JOB_NODELIST:\t" $SLURM_JOB_NODELIST "\n\n"
 
 module load anaconda				### load anaconda module (must be present when working with conda environments)
 source activate msc				### activate a conda environment, replace my_env with your conda environment
-python scripts/psp/build_dataset.py -p pat_3500 -f nonlin_interdep
+python scripts/psp/build_dataset/build_dataset.py -p pat_3500 -f nonlin_interdep
