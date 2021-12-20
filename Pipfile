@@ -28,6 +28,7 @@ pyqt5 = "*"
 portion = "*"
 mne-features = "*"
 xgboost = "*"
+pyyaml = "*"
 
 [dev-packages]
 paramiko = "*"

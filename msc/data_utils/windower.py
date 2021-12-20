@@ -21,7 +21,7 @@ def get_recording_start(package: str, patient: str) -> datetime:
     Returns:
 
     """
-    data_index_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}/data_index.csv"
+    data_index_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/data_index.csv"
     data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
 
     patient_data_df = data_index_df.loc[
@@ -40,7 +40,7 @@ def get_recording_end(package: str, patient: str) -> datetime:
     Returns:
 
     """
-    data_index_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}/data_index.csv"
+    data_index_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/data_index.csv"
     data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
 
     patient_data_df = data_index_df.loc[
@@ -49,7 +49,7 @@ def get_recording_end(package: str, patient: str) -> datetime:
     return max(patient_data_df.end_date)
 
 
-def get_interictal_intervals(package: str, patient: str, fast_dev_mode: bool) -> List[Interval]:
+def get_interictal_intervals(package: str, patient: str) -> List[Interval]:
     """
     return interictal time intervals
 
@@ -62,7 +62,7 @@ def get_interictal_intervals(package: str, patient: str, fast_dev_mode: bool) ->
     Returns:
 
     """
-    min_diff = timedelta(hours=float(config.get('DATA', 'INTERICTAL_MIN_DIFF_HOURS')))
+    min_diff = timedelta(hours=float(config['TASK']['INTERICTAL_MIN_DIFF_HOURS']))
     recording_start = get_recording_start(package, patient)
     recording_end = get_recording_end(package, patient)
 
@@ -72,12 +72,10 @@ def get_interictal_intervals(package: str, patient: str, fast_dev_mode: bool) ->
     middle_interictals = [P.open(onsets[i] + min_diff, onsets[i + 1] - min_diff) for i in range(0, len(onsets) - 1)]
     last_interictal = P.open(onsets[-1] + min_diff, recording_end)
     interictals = [first_interictal] + middle_interictals + [last_interictal]
-    if fast_dev_mode:
-        return interictals[:2]
     return interictals
 
 
-def get_preictal_intervals(package: str, patient: str, fast_dev_mode: bool) -> List[Interval]:
+def get_preictal_intervals(package: str, patient: str) -> List[Interval]:
     """
     return preictal time intervals
 
@@ -90,9 +88,7 @@ def get_preictal_intervals(package: str, patient: str, fast_dev_mode: bool) -> L
 
     """
     onsets = get_seiz_onsets(package, patient)
-    preictals = [P.open(onset - timedelta(hours=float(config.get('DATA', 'PREICTAL_MIN_DIFF_HOURS'))), onset) for onset in onsets]
-    if fast_dev_mode:
-        return preictals[:2]
+    preictals = [P.open(onset - timedelta(hours=float(config['TASK']['PREICTAL_MIN_DIFF_HOURS'])), onset) for onset in onsets]
     return preictals
 
 
@@ -107,7 +103,7 @@ def get_seiz_onsets(package: str, patient: str) -> List[datetime]:
     Returns:
 
     """
-    seizures_index_path = f"{config.get('DATA', 'DATASETS_PATH_LOCAL')}/{config.get('DATA', 'DATASET')}/seizures_index.csv"
+    seizures_index_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/seizures_index.csv"
 
     seizures_index_df = pd.read_csv(seizures_index_path, parse_dates=['onset', 'offset'])
 

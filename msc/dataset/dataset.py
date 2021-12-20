@@ -1,13 +1,44 @@
+import glob
 import os
 import pickle
 import re
-from configparser import ConfigParser
 
+import mne.io
 import numpy as np
 import pandas as pd
+from mne.io import Raw
 from numpy import ndarray
+from pandas import Series
 
 from msc.config import get_config
+
+
+def get_datasets_df(feature_names=('max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr', 'nonlin_interdep'),
+                    patient_names=('pat_3500', 'pat_3700', 'pat_7200')):
+    # get config
+    config = get_config()
+
+    # initialize datasets
+    feature_names = feature_names
+    patient_names = patient_names
+    index = pd.MultiIndex.from_product([feature_names, patient_names], names=["feature_name", "patient_name"])
+    datasets_df = pd.DataFrame(index=index).reset_index()
+
+    def get_data_dir(row):
+        patient_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}" \
+                      f"/{row['feature_name']}/surfCO/{row['patient_name']}"
+        globbed = sorted(glob.glob(patient_dir + '/*'),
+                         reverse=False)  # if reverse is set to true, get most recent datasets
+        # assert len(globbed) > 0, f"Error: the dataset {row} could not be found"
+        if len(globbed) > 0:
+            data_dir = f"{globbed[0]}"
+            return data_dir
+        else:
+            return None
+
+    datasets_df['data_dir'] = datasets_df.apply(get_data_dir, axis=1)
+
+    return datasets_df.dropna()
 
 
 class baseDataset:
@@ -42,6 +73,37 @@ class RawDataset(baseDataset):
         """
         self.dataset_dir = dataset_dir
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
+        assert os.path.isfile(f"{dataset_dir}/data_index.csv"), "error: data_index.csv not found"
+        assert os.path.isfile(f"{dataset_dir}/patients_index.csv"), "error: patients_index.csv not found"
+        assert os.path.isfile(f"{dataset_dir}/seizures_index.csv"), "error: seizures_index.csv not found"
+        self.data_df = pd.read_csv(f"{dataset_dir}/data_index.csv", index_col=0)
+        self.patients_df = pd.read_csv(f"{dataset_dir}/patients_index.csv", index_col=0)
+        self.seizures_df = pd.read_csv(f"{dataset_dir}/seizures_index.csv", index_col=0)
+
+    def get_raw(self, data_row: Series, preload=False) -> Raw:
+        """
+        gets a random raw sample.
+        Args:
+            seconds:
+
+        Returns:
+
+        """
+        raw_fpath = self._build_fpath_for_raw(data_row)
+        raw = mne.io.read_raw_nicolet(raw_fpath, ch_type='eeg', preload=preload)
+        return raw
+
+    def _build_fpath_for_raw(self, data_row) -> str:
+        """
+        return the fpath for the data row
+        Args:
+            data_row:
+
+        Returns:
+
+        """
+        return f'{self.dataset_dir}/{data_row.package.item()}/{data_row.patient.item()}/{data_row.admission.item()}/' \
+               f'{data_row.recording.item()}/{data_row.fname.item()}'
 
 
 class PSPDataset(predictionDataset):
@@ -60,6 +122,8 @@ class PSPDataset(predictionDataset):
         """
         super().__init__()
         self.dataset_dir = dataset_dir
+        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
+        assert os.path.isfile(f"{dataset_dir}/dataset.csv"), "error: dataset.csv file not found"
         self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col='window_id')
 
         def file_loader():
@@ -76,9 +140,6 @@ class PSPDataset(predictionDataset):
 
         # self.labels = list(self.samples_df.label)
 
-    def get_y(self):
-        return
-
     def get_X(self):
         return np.vstack(self.samples_df.x)
 
@@ -90,10 +151,10 @@ class PSPDataset(predictionDataset):
         else:
             raise ValueError("incorrect format")
 
+class MaskedDataset(PSPDataset):
+    def __init__(self, dataset_dir: str, mask: ndarray):
+        super(MaskedDataset, self).__init__(dataset_dir)
+        self.mask = mask
 
-if __name__ == '__main__':
-    config: ConfigParser = get_config()
-    dataset_dir: str = config.get("DATA", "DATASET_PATH_LOCAL")
-    dataset: PSPDataset = PSPDataset(dataset_dir)
-
-    Xs, Ys = dataset.training_set
+    def get_masked_X(self):
+        return self.get_X() * self.mask
