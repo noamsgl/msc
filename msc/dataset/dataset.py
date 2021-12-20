@@ -13,7 +13,7 @@ from pandas import Series
 from msc.config import get_config
 
 
-def get_datasets_df(feature_names=('max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr'),
+def get_datasets_df(feature_names=('max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr', 'nonlin_interdep'),
                     patient_names=('pat_3500', 'pat_3700', 'pat_7200')):
     # get config
     config = get_config()
@@ -29,13 +29,16 @@ def get_datasets_df(feature_names=('max_cross_corr', 'phase_lock_val', 'spect_co
                       f"/{row['feature_name']}/surfCO/{row['patient_name']}"
         globbed = sorted(glob.glob(patient_dir + '/*'),
                          reverse=False)  # if reverse is set to true, get most recent datasets
-        assert len(globbed) > 0, f"Error: the dataset {row} could not be found"
-        data_dir = f"{globbed[0]}"
-        return data_dir
+        # assert len(globbed) > 0, f"Error: the dataset {row} could not be found"
+        if len(globbed) > 0:
+            data_dir = f"{globbed[0]}"
+            return data_dir
+        else:
+            return None
 
     datasets_df['data_dir'] = datasets_df.apply(get_data_dir, axis=1)
 
-    return datasets_df
+    return datasets_df.dropna()
 
 
 class baseDataset:
@@ -147,3 +150,11 @@ class PSPDataset(predictionDataset):
             return list(self.samples_df.label)
         else:
             raise ValueError("incorrect format")
+
+class MaskedDataset(PSPDataset):
+    def __init__(self, dataset_dir: str, mask: ndarray):
+        super(MaskedDataset, self).__init__(dataset_dir)
+        self.mask = mask
+
+    def get_masked_X(self):
+        return self.get_X() * self.mask
