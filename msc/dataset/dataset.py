@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from mne.io import Raw
 from numpy import ndarray
-from pandas import Series
+from pandas import Series, DataFrame
 
 from msc.config import get_config
 
@@ -124,7 +124,7 @@ class PSPDataset(predictionDataset):
         self.dataset_dir = dataset_dir
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
         assert os.path.isfile(f"{dataset_dir}/dataset.csv"), "error: dataset.csv file not found"
-        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col='window_id')
+        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
 
         def file_loader():
             """returns a generator object which iterates the folder yields tuples like (window_id, x)."""
@@ -150,6 +150,7 @@ class PSPDataset(predictionDataset):
             return list(self.samples_df.label)
         else:
             raise ValueError("incorrect format")
+
 
 class MaskedDataset(PSPDataset):
     def __init__(self, dataset_dir: str, mask: ndarray):
