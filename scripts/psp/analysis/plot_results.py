@@ -18,7 +18,6 @@ def plot_results_score(results_row, patient_name, feature_name, score=('precisio
 
 
 def plot_results_time(results_row, patient_name, feature_name, time_col=('score_time'), logy=False, ax=None, color=None):
-
     if ax is None:
         fig, ax = plt.figure()
     results = results_row.loc[:, ['classifier_name'] + [time_col]]
