@@ -35,7 +35,6 @@ def plot_classifier_roc_curve_and_confusion_matrix(selected_patient, selected_fe
     return None
 
 
-
 def plot_classifier_roc_curve(selected_patient, selected_feature, selected_classifier):
     datasets_df = get_datasets_df()
 
@@ -47,7 +46,7 @@ def plot_classifier_roc_curve(selected_patient, selected_feature, selected_class
     results = pickle.load(open(results_fpath, 'rb'))
 
     estimator = results.loc[
-        selected_patient, selected_feature, selected_classifier, results['fold'] == 0].estimator.item()
+        selected_patient, selected_feature, selected_classifier, results['fold'] == 1].estimator.item()
 
     X, labels = psp_dataset.get_X(), psp_dataset.get_labels()
     le = LabelEncoder()
@@ -64,8 +63,8 @@ def plot_classifier_roc_curve(selected_patient, selected_feature, selected_class
 
 
 if __name__ == '__main__':
-    selected_patient = 'pat_3500'
-    selected_feature = 'max_cross_corr'
+    selected_patient = 'pat_7200'
+    selected_feature = 'time_corr'
     selected_classifier = 'Linear SVM'
 
     plot_classifier_roc_curve(selected_patient, selected_feature, selected_classifier)

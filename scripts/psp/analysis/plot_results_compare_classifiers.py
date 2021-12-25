@@ -17,31 +17,33 @@ def plot_results_score(results_row, patient_name, feature_name, score=('precisio
                           title=f"{score} for Patient {patient_name}, Feature {feature_name}")
 
 
-def plot_results_time(results_row, patient_name, feature_name, time_col=('score_time'), logy=False, ax=None, color=None):
+def plot_results_time(results_row, patient_name, feature_name, time_col=('score_time'), logy=False, ax=None,
+                      color=None):
     if ax is None:
         fig, ax = plt.figure()
     results = results_row.loc[:, ['classifier_name'] + [time_col]]
     means = results.groupby('classifier_name').mean()
     errors = results.groupby('classifier_name').std()
-    return means.plot.bar(ax=ax, yerr=errors, xlabel='Classifier Name', ylabel='time (seconds)', logy=logy, rot=0, grid=True, color=color,
+    return means.plot.bar(ax=ax, yerr=errors, xlabel='Classifier Name', ylabel='time (seconds)', logy=logy, rot=0,
+                          grid=True, color=color,
                           title=f"{time_col} for Patient {patient_name}, Feature {feature_name}")
 
 
-def plot_results_scores(results_row, ax, scorings=('precision', 'recall', 'roc_auc'), ):
+def plot_results_scores(results_row, patient_name, feature_name, ax, scorings=('precision', 'recall', 'roc_auc')):
     scoring_cols = [f'test_{sc}' for sc in scorings]
     results = results_row.loc[:, ['classifier_name'] + scoring_cols]
     means = results.groupby('classifier_name').mean()
     errors = results.groupby('classifier_name').std()
     return means.plot.bar(ax=ax, yerr=errors, xlabel='Classifier Name',
-                          title='Evaluation Results for Different Classifiers', rot=12)
+                          title=f"Evaluation Results for Different Classifiers\n{patient_name}, {feature_name}", rot=18)
 
 
-def plot_results_times(results_fpath, timing_cols=('fit_time', 'score_time')):
-    results = pd.read_csv(results_fpath)
-    results = results.loc[:, ['name'] + list(timing_cols)]
-    means = results.groupby('name').mean()
-    errors = results.groupby('name').std()
-    return means.plot.bar(yerr=errors, xlabel='Classifier Name', title='Computation Time for Different Classifiers')
+def plot_results_times(results_row, patient_name, feature_name, ax, timing_cols=('fit_time', 'score_time')):
+    results = results_row.loc[:, ['classifier_name'] + list(timing_cols)]
+    means = results.groupby('classifier_name').mean()
+    errors = results.groupby('classifier_name').std()
+    return means.plot.bar(ax=ax, yerr=errors, xlabel='Classifier Name',
+                          title=f"Computation Time for Different Classifiers\n{patient_name}, {feature_name}", rot=18)
 
 
 if __name__ == '__main__':
@@ -50,11 +52,11 @@ if __name__ == '__main__':
     results = pd.read_csv(results_fpath)
 
     selected_patient = "pat_3500"
-    selected_feature = "max_cross_corr"
+    selected_feature = "spect_corr"
 
-    results = results.set_index(['patient_name','feature_name']).loc[selected_patient, selected_feature]
+    results = results.set_index(['patient_name', 'feature_name']).loc[selected_patient, selected_feature]
     fig, ax = plt.subplots(1)
-    plot_results_scores(results, ax=ax)
+    plot_results_times(results, selected_patient, selected_feature, ax=ax)
 
     plt.tight_layout()
 
