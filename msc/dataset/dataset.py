@@ -6,9 +6,10 @@ import re
 import mne.io
 import numpy as np
 import pandas as pd
+import portion
 from mne.io import Raw
 from numpy import ndarray
-from pandas import Series, DataFrame
+from pandas import Series
 
 from msc.config import get_config
 
@@ -126,6 +127,18 @@ class PSPDataset(predictionDataset):
         assert os.path.isfile(f"{dataset_dir}/dataset.csv"), "error: dataset.csv file not found"
         self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
 
+        def parse_datetime_interval(interval_str):
+            pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
+
+            def converter(val):
+                # noinspection PyUnresolvedReferences
+                import datetime
+
+                return eval(val)
+
+            interval = portion.from_string(interval_str, conv=converter, bound=pattern)
+            return interval
+
         def file_loader():
             """returns a generator object which iterates the folder yields tuples like (window_id, x)."""
             for file in os.listdir(dataset_dir):
@@ -138,6 +151,7 @@ class PSPDataset(predictionDataset):
         windows_dict = {window_id: x for window_id, x in file_loader()}
         self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name].reshape(-1), axis=1)
 
+        self.samples_df['interval'] = self.samples_df['interval'].apply(parse_datetime_interval)
         # self.labels = list(self.samples_df.label)
 
     def get_X(self):
