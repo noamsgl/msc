@@ -34,7 +34,7 @@ def plot_results_scores(results_row, patient_name, feature_name, ax, scorings=('
     results = results_row.loc[:, ['classifier_name'] + scoring_cols]
     means = results.groupby('classifier_name').mean()
     errors = results.groupby('classifier_name').std()
-    return means.plot.bar(ax=ax, yerr=errors, xlabel='Classifier Name',
+    return means.plot.bar(ax=ax, yerr=errors, xlabel='Classifier Name', ylim=(0, 1),
                           title=f"Evaluation Results for Different Classifiers\n{patient_name}, {feature_name}", rot=18)
 
 
@@ -51,12 +51,13 @@ if __name__ == '__main__':
     results_fpath = f"{config['PATH']['LOCAL']['RESULTS']}/complete_results.csv"
     results = pd.read_csv(results_fpath)
 
-    selected_patient = "pat_3500"
+    selected_patient = "pat_7200"
     selected_feature = "spect_corr"
 
     results = results.set_index(['patient_name', 'feature_name']).loc[selected_patient, selected_feature]
     fig, ax = plt.subplots(1)
     plot_results_times(results, selected_patient, selected_feature, ax=ax)
+    # plot_results_scores(results, selected_patient, selected_feature, scorings=('roc_auc',), ax=ax)
 
     plt.tight_layout()
 
