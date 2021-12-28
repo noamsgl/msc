@@ -1,4 +1,5 @@
 import pandas as pd
+from pandas import DataFrame
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.model_selection import train_test_split, cross_validate
@@ -17,7 +18,7 @@ from msc.dataset.dataset import PSPDataset, get_datasets_df
 
 def main(save_to_disk=True, feature_names=('max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr'),
          patient_names=('pat_3500', 'pat_3700', 'pat_7200'),
-         classifier_names=None):
+         classifier_names=None) -> DataFrame:
     # get config
     config = get_config()
 

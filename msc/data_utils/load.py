@@ -8,7 +8,6 @@ import mne
 import numpy as np
 import pandas as pd
 import portion
-import torch
 from mne.io import Raw, BaseRaw
 from numpy import ndarray
 from pandas import Series, DataFrame
@@ -16,7 +15,6 @@ from portion import Interval
 from tqdm import tqdm
 
 from msc.config import get_config
-from msc.data_utils.download import download_file_scp
 
 mne.set_log_level(False)
 

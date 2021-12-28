@@ -6,6 +6,7 @@ import re
 import mne.io
 import numpy as np
 import pandas as pd
+import portion
 from mne.io import Raw
 from numpy import ndarray
 from pandas import Series
@@ -113,7 +114,7 @@ class PSPDataset(predictionDataset):
     And a structured dataset.csv according to project standards (see ReadME).
     """
 
-    def __init__(self, dataset_dir: str):
+    def __init__(self, dataset_dir: str, add_next_seizure_info=False):
         """
         Initialize a dataset for the PSP course project.
         Loads the windows and provides quick access to splits and folds.
@@ -124,10 +125,22 @@ class PSPDataset(predictionDataset):
         self.dataset_dir = dataset_dir
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
         assert os.path.isfile(f"{dataset_dir}/dataset.csv"), "error: dataset.csv file not found"
-        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col='window_id')
+        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
+
+        def parse_datetime_interval(interval_str):
+            pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
+
+            def converter(val):
+                # noinspection PyUnresolvedReferences
+                import datetime
+
+                return eval(val)
+
+            interval = portion.from_string(interval_str, conv=converter, bound=pattern)
+            return interval
 
         def file_loader():
-            """returns a generator object which iterates the folder yields tuples like (window_id, x)."""
+            """returns a generator object which iterates the folder. Yields tuples like (window_id, x)."""
             for file in os.listdir(dataset_dir):
                 if file.endswith('.pkl'):
                     window_id = int(re.search('\d+', file).group(0))
@@ -138,7 +151,28 @@ class PSPDataset(predictionDataset):
         windows_dict = {window_id: x for window_id, x in file_loader()}
         self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name].reshape(-1), axis=1)
 
+        self.samples_df['interval'] = self.samples_df['interval'].apply(parse_datetime_interval)
         # self.labels = list(self.samples_df.label)
+        self.samples_df['lower'] = self.samples_df['interval'].apply(lambda i: i.lower)
+        self.samples_df['upper'] = self.samples_df['interval'].apply(lambda i: i.upper)
+
+        if add_next_seizure_info:
+            # add time to seizure
+            config = get_config()
+            raw_dataset_path = config['PATH']['LOCAL']['RAW_DATASET']
+            seizures_index_path = f"{raw_dataset_path}/seizures_index.csv"
+            seizures_index_df = pd.read_csv(seizures_index_path, parse_dates=['onset', 'offset'], index_col=0)
+
+            # select patient seizures
+            seizures_index_df = seizures_index_df.sort_values(by="onset")
+            seizures_index_df = seizures_index_df[
+                ['package', 'patient', 'seizure_num', 'classif.', 'onset', 'offset', 'pattern', 'vigilance', 'origin',
+                 'semiology']]
+
+            # match on nearest key
+            # !assumes seizures_index_df is sorted by onset times!
+            self.samples_df = pd.merge_asof(self.samples_df.sort_values(by='lower'), seizures_index_df, left_on="lower",
+                                            right_on="onset", by=['package', 'patient'], direction='forward')
 
     def get_X(self):
         return np.vstack(self.samples_df.x)
@@ -150,6 +184,7 @@ class PSPDataset(predictionDataset):
             return list(self.samples_df.label)
         else:
             raise ValueError("incorrect format")
+
 
 class MaskedDataset(PSPDataset):
     def __init__(self, dataset_dir: str, mask: ndarray):

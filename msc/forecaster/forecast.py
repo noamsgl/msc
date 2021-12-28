@@ -1,4 +1,0 @@
-
-
-def model():
-    return None
