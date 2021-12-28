@@ -14,6 +14,24 @@ from pandas import Series
 from msc.config import get_config
 
 
+def get_data_index_df():
+    # get config
+    config = get_config()
+    data_index_fpath = f"{config['PATH']['LOCAL']['RAW_DATASET']}/data_index.csv"
+
+    data_index_df = pd.read_csv(data_index_fpath, index_col=0, parse_dates=['meas_date', 'end_date'])
+    return data_index_df
+
+
+def get_seizures_index_df():
+    # get config
+    config = get_config()
+    seizures_index_fpath = f"{config['PATH']['LOCAL']['RAW_DATASET']}/seizures_index.csv"
+
+    seizures_index_df = pd.read_csv(seizures_index_fpath, index_col=0)
+    return seizures_index_df
+
+
 def get_datasets_df(feature_names=('max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr', 'nonlin_interdep'),
                     patient_names=('pat_3500', 'pat_3700', 'pat_7200')):
     # get config
