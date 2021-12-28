@@ -28,7 +28,7 @@ def get_seizures_index_df():
     config = get_config()
     seizures_index_fpath = f"{config['PATH']['LOCAL']['RAW_DATASET']}/seizures_index.csv"
 
-    seizures_index_df = pd.read_csv(seizures_index_fpath, index_col=0)
+    seizures_index_df = pd.read_csv(seizures_index_fpath, parse_dates=['onset', 'offset'], index_col=0)
     return seizures_index_df
 
 
