@@ -114,7 +114,7 @@ class PSPDataset(predictionDataset):
     And a structured dataset.csv according to project standards (see ReadME).
     """
 
-    def __init__(self, dataset_dir: str, add_next_seizure_info=True):
+    def __init__(self, dataset_dir: str, add_next_seizure_info=False):
         """
         Initialize a dataset for the PSP course project.
         Loads the windows and provides quick access to splits and folds.
