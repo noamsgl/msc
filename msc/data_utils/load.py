@@ -165,6 +165,7 @@ def datasets(H, F, L, dt, offset, device, *, fpath: str, resample_sfreq, picks: 
 
 def get_interval_from_raw(raw: Raw) -> Interval:
     """
+    # todo: test this
     Return a portion.Interval with the end points equal to the beginning and end of the raw segment, respectively.
     Args:
         raw:
@@ -324,6 +325,7 @@ def get_raw_from_interval(patient_data_df, interval: Interval) -> Raw:
 
 def get_raws_from_data_and_intervals(patient_data_df: DataFrame, picks, intervals, fast_dev_mode: bool = False):
     """
+    # todo: implement this
     Returns a list of raws which correspond to the given intervals which occur completely during a single data file
     Args:
         picks:
@@ -334,6 +336,7 @@ def get_raws_from_data_and_intervals(patient_data_df: DataFrame, picks, interval
     Returns:
 
     """
+    raise NotImplementedError("under revision")
     config = get_config()
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
     raws = []

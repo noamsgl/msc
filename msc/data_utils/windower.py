@@ -3,7 +3,7 @@ from typing import List
 
 import pandas as pd
 import portion as P
-
+from pandas import DataFrame
 from portion import Interval
 
 from msc.config import get_config
@@ -88,8 +88,16 @@ def get_preictal_intervals(package: str, patient: str) -> List[Interval]:
 
     """
     onsets = get_seiz_onsets(package, patient)
-    preictals = [P.open(onset - timedelta(hours=float(config['TASK']['PREICTAL_MIN_DIFF_HOURS'])), onset) for onset in onsets]
+    preictals = [P.open(onset - timedelta(hours=float(config['TASK']['PREICTAL_MIN_DIFF_HOURS'])), onset) for onset in
+                 onsets]
     return preictals
+
+
+def get_ictal_intervals(patients: DataFrame):
+    """Get the ictal (seizure) intervals for patients
+    # todo: implement this
+    """
+    raise NotImplementedError()
 
 
 def get_seiz_onsets(package: str, patient: str) -> List[datetime]:

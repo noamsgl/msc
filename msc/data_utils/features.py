@@ -90,7 +90,7 @@ def extract_feature_from_numpy(X: ndarray, selected_func: str, sfreq, frame_leng
     Extract features at every 5s frame and concatenate into feature window
     Args:
         X:
-        selected_func:
+        selected_func: function name (see mne-features)
         sfreq:
         frame_length_sec:
 
