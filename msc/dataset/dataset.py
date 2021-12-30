@@ -14,22 +14,46 @@ from pandas import Series
 from msc.config import get_config
 
 
-def get_data_index_df():
-    # get config
-    config = get_config()
-    data_index_fpath = f"{config['PATH']['LOCAL']['RAW_DATASET']}/data_index.csv"
+def static_vars(**kwargs):
+    """
+    A decorator function which allows initializing static vars in functions.
+    https://stackoverflow.com/a/279586/11814443
+    Args:
+        **kwargs:
 
-    data_index_df = pd.read_csv(data_index_fpath, index_col=0, parse_dates=['meas_date', 'end_date'])
+    Returns:
+
+    """
+
+    def decorate(func):
+        for k in kwargs:
+            setattr(func, k, kwargs[k])
+        return func
+
+    return decorate
+
+
+@static_vars(data_index_df=None)
+def get_data_index_df():
+    if get_data_index_df.data_index is None:
+        # get config
+        config = get_config()
+        data_index_fpath = f"{config['PATH']['LOCAL']['RAW_DATASET']}/data_index.csv"
+
+        data_index_df = pd.read_csv(data_index_fpath, index_col=0, parse_dates=['meas_date', 'end_date'])
     return data_index_df
 
 
+@static_vars(seizures_index_df=None)
 def get_seizures_index_df():
-    # get config
-    config = get_config()
-    seizures_index_fpath = f"{config['PATH']['LOCAL']['RAW_DATASET']}/seizures_index.csv"
+    if get_seizures_index_df.seizures_index_df is None:
+        # get config
+        config = get_config()
+        seizures_index_fpath = f"{config['PATH']['LOCAL']['RAW_DATASET']}/seizures_index.csv"
 
-    seizures_index_df = pd.read_csv(seizures_index_fpath, parse_dates=['onset', 'offset'], index_col=0)
-    return seizures_index_df
+        get_seizures_index_df.seizures_index_df = pd.read_csv(seizures_index_fpath, parse_dates=['onset', 'offset'],
+                                                              index_col=0)
+    return get_seizures_index_df.seizures_index_df
 
 
 def get_datasets_df(feature_names=('max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr', 'nonlin_interdep'),
