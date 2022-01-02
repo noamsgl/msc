@@ -8,12 +8,12 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 import portion
+import yaml
 from numpy import ndarray
 from pandas import DataFrame
 
 from msc.config import get_config
-from msc.data_utils.load import get_raws_from_data_and_intervals, get_interval_from_raw
-from msc.data_utils.windower import get_ictal_intervals
+from msc.data_utils.load import get_raws_from_data_and_intervals, PicksOptions, get_time_as_str
 from msc.dataset.build_dataset import intervals_to_windows
 
 
@@ -56,8 +56,20 @@ def get_seizures_index_df():
         # noinspection PyTypeChecker
         seizures_index_fpath = f"{config['PATH']['LOCAL']['RAW_DATASET']}/seizures_index.csv"
 
-        get_seizures_index_df.seizures_index_df = pd.read_csv(seizures_index_fpath, parse_dates=['onset', 'offset'],
-                                                              index_col=0)
+        seizures_index_df = pd.read_csv(seizures_index_fpath, parse_dates=['onset', 'offset'],
+                                        index_col=0).set_index(['patient', 'seizure_num'])
+        seizures_index_df['interval'] = seizures_index_df.apply(lambda row:
+                                                                portion.closedopen(
+                                                                    row.onset,
+                                                                    row.offset),
+                                                                axis=1)
+        if seizures_index_df.loc[:, ['onset', 'offset']].isna().any().any():
+            print("warning: dropping some seizures because onset or offset are NaT")
+            seizures_index_df = seizures_index_df.dropna(subset=['onset', 'offset'])
+
+        print("warning: dropping seizures with length < 5 seconds")
+        seizures_index_df = seizures_index_df.loc[seizures_index_df.length > 5]
+        get_seizures_index_df.seizures_index_df = seizures_index_df
     return get_seizures_index_df.seizures_index_df
 
 
@@ -96,6 +108,7 @@ class baseDataset:
     """
 
     def __init__(self, fast_dev_mode: bool = False):
+        self.create_time = get_time_as_str()
         self.fast_dev_mode = fast_dev_mode
         if self.fast_dev_mode:
             print(f"WARNING! {self.fast_dev_mode=} !!! Results are incomplete.")
@@ -112,22 +125,28 @@ class XDataset(baseDataset):
 
 class SeizuresDataset(XDataset):
     """
-    A class for generating a dataset composed of seizures only
+    A class for a dataset composed of seizures only.
+    Regular instantiation (__init__()) can be used for loading an existing dataset.
+    @classmethod generate_dataset() can be used to generate one from scratch.
     """
 
-    def __init__(self, data_index_df: DataFrame, fast_dev_mode: bool, picks: Sequence[str]):
+    def __init__(self, dataset_dir: str):
         """
-         todo: implement self._write_metadata()
         Args:
             data_index_df:
             fast_dev_mode:
             picks:
         """
-        baseDataset.__init__(self, fast_dev_mode)
-        self.data_index_df = data_index_df
-        self.picks = picks
+        # baseDataset.__init__(self, fast_dev_mode)
+        super().__init__()
+        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
+        assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
+        self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv")
 
-    def _generate_dataset(self, output_dir: str = None):
+    @classmethod
+    def generate_dataset(cls, seizures_index_df: DataFrame, fast_dev_mode: bool = False,
+                         picks: Sequence[str] = PicksOptions.common_channels, output_dir: str = None,
+                         time_minutes_before=0, time_minutes_after=0):
         """
         Gets the seizure intervals,
         Iterates over the data files
@@ -135,51 +154,65 @@ class SeizuresDataset(XDataset):
 
         """
         config = get_config()
-
+        create_time = get_time_as_str()
         if output_dir is None:
             # noinspection PyTypeChecker
-            output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/SEIZURES"
-        samples_df_path = f"{output_dir}/dataset.csv"
+            output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/SEIZURES/{create_time}"
 
         print(f"Creating Output Directory {output_dir}")
         os.makedirs(output_dir, exist_ok=True)
 
+        metadata = {"creation_time": create_time,
+                    "fast_dev_mode": fast_dev_mode,
+                    "ictal_label": config["TASK"]["ICTAL_LABEL"],
+                    "picks": picks,
+                    "sfreq": config['TASK']['RESAMPLE'],
+                    "time_minutes_before": time_minutes_before,
+                    "time_minutes_after": time_minutes_after}
+
+        with open(f"{output_dir}/dataset.yml", 'w') as metadata_file:
+            yaml.dump(metadata, metadata_file, default_flow_style=False)
+
         # initialize samples_df
-        samples_df = pd.DataFrame(columns=['package', 'patient', 'interval',
-                                           'window_id', 'fname', 'label', 'label_desc'])
+        samples_df = pd.DataFrame(
+            columns=['patient_name', 'interval', 'window_id', 'fname', 'label', 'label_desc'])
 
-        # getting seizure intervals
-        ictal_intervals = get_ictal_intervals(self.data_index_df)
+        # get seizure intervals
+        ictal_intervals = seizures_index_df.interval
 
-        # splitting into windowed intervals
-        ictal_window_intervals = intervals_to_windows(ictal_intervals)
+        # convert ictal intervals into window intervals (expand with time before and after)
+        ictal_window_intervals = intervals_to_windows(ictal_intervals, time_minutes_before, time_minutes_after)
 
+        print("starting to load raw files")
         # load Raws
-        ictal_raws = get_raws_from_data_and_intervals(self.data_index_df, self.picks, ictal_window_intervals,
-                                                      self.fast_dev_mode)
+
+        ictal_raws = get_raws_from_data_and_intervals(ictal_window_intervals, picks, fast_dev_mode)
 
         print("starting to process raw files")
         counter = itertools.count()
-        for raw in ictal_raws:
+        for ictal_idx, ictal_row in ictal_raws.dropna().iterrows():
             # create samples_df row
-            interval = get_interval_from_raw(raw)
             window_id = next(counter)
             fname = f"{output_dir}/window_{window_id}.pkl"
-            y = config['TASK']['PREICTAL_LABEL']
-            row = {"patient_name": raw.info['patient_name'],
-                   "interval": interval,
+            # create label and label_desc
+            y = config['TASK']['ICTAL_LABEL']
+            y_desc = "ictal"
+            # append row to samples_df
+            row = {"patient_name": ictal_idx[0],
+                   "seizure_num": ictal_idx[1],
+                   "interval": ictal_row.interval,
                    "window_id": window_id,
                    "fname": fname,
                    "label": y,
-                   "label_desc": "preictal"}
+                   "label_desc": y_desc}
             samples_df = samples_df.append(row, ignore_index=True)
 
             # Get X
-            X = raw.get_data()
+            X = ictal_row.raw.get_data()
 
             # Scale X
-            from sklearn.preprocessing import StandardScaler
-            X = StandardScaler().fit_transform(X)
+            # from sklearn.preprocessing import StandardScaler
+            # X = StandardScaler().fit_transform(X)
 
             # Perform Feature Extraction (Optional)
             # X = mne_features.feature_extraction.FeatureExtractor(sfreq=config['TASK']['RESAMPLE'],
@@ -190,9 +223,10 @@ class SeizuresDataset(XDataset):
             print(f"dumping {window_id=} to {fname=}")
             pickle.dump(X, open(fname, 'wb'))
 
-        samples_df.to_csv(samples_df_path)
+        samples_df_path = f"{output_dir}/samples_df.csv"
         print(f"saving samples_df to {samples_df_path=}")
-        return
+        samples_df.to_csv(samples_df_path)
+        return cls(output_dir)
 
     def _write_metadata(self):
         # The path of the metadata file

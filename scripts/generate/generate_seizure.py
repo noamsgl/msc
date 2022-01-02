@@ -5,7 +5,7 @@ Output a single, randomly generated seizure
 
 
 """
-from msc.dataset.dataset import get_data_index_df
+from msc.dataset.dataset import get_data_index_df, SeizuresDataset, get_seizures_index_df
 
 if __name__ == '__main__':
     sfreq = 128
@@ -15,5 +15,5 @@ if __name__ == '__main__':
 
     # load data
     data_index_df = get_data_index_df()
-    # dataset = SeizuresDataset
-    x = 5
+    seizures_index_df = get_seizures_index_df()
+    dataset = SeizuresDataset.generate_dataset(seizures_index_df, fast_dev_mode=False)

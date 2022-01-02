@@ -93,10 +93,13 @@ def get_preictal_intervals(package: str, patient: str) -> List[Interval]:
     return preictals
 
 
-def get_ictal_intervals(patients: DataFrame):
-    """Get the ictal (seizure) intervals for patients
+def get_ictal_intervals(seizures_index_df: DataFrame):
+    """Get the ictal (seizure) intervals from the seizures_index_df
     # todo: implement this
     """
+
+
+
     raise NotImplementedError()
 
 

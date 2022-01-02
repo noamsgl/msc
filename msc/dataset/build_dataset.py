@@ -6,26 +6,27 @@ Building Datasets
 """
 
 from datetime import timedelta
-from itertools import chain
+from typing import List
 
 import portion
+from portion import Interval
 
 
-def intervals_to_windows(intervals, time_minutes=5):
+def intervals_to_windows(intervals, time_minutes_before=0, time_minutes_after=0) -> List[Interval]:
     """
-    todo: implement this
+    Returns the windows. Optionally add constant buffer time before and after intervals.
     Args:
         intervals:
-        time_minutes:
-
+        time_minutes_before:
+        time_minutes_after:
     Returns:
-
     """
-    raise NotImplementedError()
-    start_times = [list(portion.iterate(intervals[i], step=timedelta(minutes=time_minutes))) for i in
-                   range(len(intervals))]
-    windows = [[portion.closedopen(times[i], times[i + 1]) for i in range(len(times) - 1)] for times in start_times]
-    return list(chain.from_iterable(windows))  # chain together sublists
+
+    def expand(interval):
+        return portion.closedopen(interval.lower - timedelta(minutes=time_minutes_before),
+                                  interval.upper + timedelta(minutes=time_minutes_after))
+
+    return intervals.apply(expand)
 
 
 def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, config, fast_dev_mode=False):
