@@ -4,6 +4,7 @@ PATH:
     RAW_DATASET: C:\raw_data\epilepsiae
     RESULTS: C:\Users\noam\Repositories\noamsgl\msc\results
     PSP_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae
+    SEIZURES_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae
 
   BGUCLUSTER:
     RAW_DATASET: /cs_storage/noamsi/raw_data/epilepsiae/
@@ -20,8 +21,10 @@ TASK:
   RESAMPLE: "256"
   PREICTAL_MIN_DIFF_HOURS: "1"
   INTERICTAL_MIN_DIFF_HOURS: "4"
-  PREICTAL_LABEL: "0"
-  INTERICTAL_LABEL: "1"
+  INTERICTAL_LABEL: "0"
+  PREICTAL_LABEL: "1"
+  ICTAL_LABEL: "2"
+
 
 RESULTS:
   LOCAL:
