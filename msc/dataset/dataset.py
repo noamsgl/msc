@@ -42,7 +42,7 @@ def get_data_index_df():
         # get config
         config = get_config()
         # noinspection PyTypeChecker
-        data_index_fpath = f"{config['PATH']['LOCAL']['RAW_DATASET']}/data_index.csv"
+        data_index_fpath = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/data_index.csv"
 
         data_index_df = pd.read_csv(data_index_fpath, index_col=0, parse_dates=['meas_date', 'end_date'])
     return data_index_df
@@ -54,7 +54,7 @@ def get_seizures_index_df():
         # get config
         config = get_config()
         # noinspection PyTypeChecker
-        seizures_index_fpath = f"{config['PATH']['LOCAL']['RAW_DATASET']}/seizures_index.csv"
+        seizures_index_fpath = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/seizures_index.csv"
 
         seizures_index_df = pd.read_csv(seizures_index_fpath, parse_dates=['onset', 'offset'],
                                         index_col=0).set_index(['patient', 'seizure_num'])
