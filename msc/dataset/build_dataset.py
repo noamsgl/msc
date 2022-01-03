@@ -6,27 +6,30 @@ Building Datasets
 """
 
 from datetime import timedelta
-from typing import List
 
 import portion
-from portion import Interval
+from pandas import DataFrame
 
 
-def intervals_to_windows(intervals, time_minutes_before=0, time_minutes_after=0) -> List[Interval]:
+def add_window_intervals(intervals_df: DataFrame, time_minutes_before=0, time_minutes_after=0) -> DataFrame:
     """
-    Returns the windows. Optionally add constant buffer time before and after intervals.
+    Adds window_interval to dataframe with ictal_intervals.
     Args:
-        intervals:
+        intervals_df:
         time_minutes_before:
         time_minutes_after:
     Returns:
     """
 
+    assert 'ictal_interval' in intervals_df
+
     def expand(interval):
         return portion.closedopen(interval.lower - timedelta(minutes=time_minutes_before),
                                   interval.upper + timedelta(minutes=time_minutes_after))
 
-    return intervals.apply(expand)
+    intervals_df["window_interval"] = intervals_df['ictal_interval'].apply(expand)
+
+    return intervals_df
 
 
 def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, config, fast_dev_mode=False):

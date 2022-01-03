@@ -325,7 +325,7 @@ def get_raw_from_interval(patient_data_df, interval: Interval) -> Raw:
     return raw
 
 
-def get_raws_from_data_and_intervals(intervals, picks, fast_dev_mode=False):
+def add_raws_to_intervals_df(intervals_df: DataFrame, picks, fast_dev_mode=False) -> DataFrame:
     """
     Returns a list of raws which correspond to the given intervals which occur completely during a single data file
     Args:
@@ -341,18 +341,17 @@ def get_raws_from_data_and_intervals(intervals, picks, fast_dev_mode=False):
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
     data_index_df_rows = list(data_index_df.iterrows())
     counter = itertools.count()
-    intervals = intervals.to_frame()
-    for data_idx, data_row in tqdm(data_index_df_rows, desc="loading patient data"):
+    for data_idx, data_row in tqdm(data_index_df_rows, desc="loading data files"):
         row_interval = portion.closedopen(data_row["meas_date"], data_row["end_date"])
 
         # add a column specifying whether the seizure interval is in the data row
-        intervals['in_row'] = intervals.interval.apply(lambda interval: interval in row_interval)
+        intervals_df['in_data_file'] = intervals_df.ictal_interval.apply(lambda interval: interval in row_interval)
 
-        if not intervals['in_row'].any():
+        if not intervals_df['in_data_file'].any():
             # don't load file if no intervals are requested from it
             continue
 
-        # fast dev mode break
+        # fast dev mode break after 3 data files
         counter_id = next(counter)
         if fast_dev_mode and counter_id > 3:
             break
@@ -371,9 +370,11 @@ def get_raws_from_data_and_intervals(intervals, picks, fast_dev_mode=False):
             raw_interval = raw.copy().crop(start_time, end_time)
             return raw_interval
 
-        intervals.loc[intervals['in_row'], "raw"] = intervals[intervals['in_row']].interval.apply(add_raw_intervals)
+        # add raw window_interval
+        intervals_df.loc[intervals_df['in_data_file'], "raw"] = intervals_df[
+            intervals_df['in_data_file']].window_interval.apply(add_raw_intervals)
 
-    return intervals.drop(columns='in_row')
+    return intervals_df.drop(columns='in_data_file')
 
 
 def get_patient_data_index(patient: str) -> DataFrame:

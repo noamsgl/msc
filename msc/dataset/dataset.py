@@ -10,11 +10,11 @@ import pandas as pd
 import portion
 import yaml
 from numpy import ndarray
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
 from msc.config import get_config
-from msc.data_utils.load import get_raws_from_data_and_intervals, PicksOptions, get_time_as_str
-from msc.dataset.build_dataset import intervals_to_windows
+from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
+from msc.dataset.build_dataset import add_window_intervals
 
 
 def static_vars(**kwargs):
@@ -175,22 +175,25 @@ class SeizuresDataset(XDataset):
 
         # initialize samples_df
         samples_df = pd.DataFrame(
-            columns=['patient_name', 'interval', 'window_id', 'fname', 'label', 'label_desc'])
+            columns=['patient_name', 'ictal_interval', 'window_interval', 'window_id', 'fname', 'label', 'label_desc'])
 
         # get seizure intervals
-        ictal_intervals = seizures_index_df.interval
+        ictal_intervals: Series = seizures_index_df.interval
+        ictal_intervals = ictal_intervals.rename('ictal_interval')
+        intervals_df = ictal_intervals.to_frame()
 
         # convert ictal intervals into window intervals (expand with time before and after)
-        ictal_window_intervals = intervals_to_windows(ictal_intervals, time_minutes_before, time_minutes_after)
+        window_intervals: DataFrame = add_window_intervals(intervals_df, time_minutes_before,
+                                                           time_minutes_after)
 
         print("starting to load raw files")
         # load Raws
 
-        ictal_raws = get_raws_from_data_and_intervals(ictal_window_intervals, picks, fast_dev_mode)
+        intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
 
         print("starting to process raw files")
         counter = itertools.count()
-        for ictal_idx, ictal_row in ictal_raws.dropna().iterrows():
+        for ictal_idx, sample_row in intervals_and_raws.dropna().iterrows():
             # create samples_df row
             window_id = next(counter)
             fname = f"{output_dir}/window_{window_id}.pkl"
@@ -200,15 +203,17 @@ class SeizuresDataset(XDataset):
             # append row to samples_df
             row = {"patient_name": ictal_idx[0],
                    "seizure_num": ictal_idx[1],
-                   "interval": ictal_row.interval,
+                   "ictal_interval": sample_row.ictal_interval,
+                   "window_interval": sample_row.window_interval,
                    "window_id": window_id,
                    "fname": fname,
                    "label": y,
-                   "label_desc": y_desc}
+                   "label_desc": y_desc
+                   }
             samples_df = samples_df.append(row, ignore_index=True)
 
             # Get X
-            X = ictal_row.raw.get_data()
+            X = sample_row.raw.get_data()
 
             # Scale X
             # from sklearn.preprocessing import StandardScaler
