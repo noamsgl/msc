@@ -141,7 +141,7 @@ class SeizuresDataset(XDataset):
         super().__init__()
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
         assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
-        self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv")
+        self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
 
     @classmethod
     def generate_dataset(cls, seizures_index_df: DataFrame, fast_dev_mode: bool = False,
