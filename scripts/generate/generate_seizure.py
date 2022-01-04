@@ -19,4 +19,5 @@ if __name__ == '__main__':
     data_index_df = get_data_index_df()
     seizures_index_df = get_seizures_index_df()
     dataset = SeizuresDataset.generate_dataset(seizures_index_df,
-                                               time_minutes_before=2, time_minutes_after=2, fast_dev_mode=True)
+                                               time_minutes_before=0, time_minutes_after=0,
+                                               fast_dev_mode=True)
