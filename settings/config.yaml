@@ -1,4 +1,5 @@
 ---
+CI: TRUE
 PATH:
   LOCAL:
     RAW_DATASET: C:\raw_data\epilepsiae
