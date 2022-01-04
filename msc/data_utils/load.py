@@ -1,4 +1,3 @@
-import itertools
 import os
 import sys
 from dataclasses import dataclass
@@ -13,7 +12,6 @@ from mne.io import Raw, BaseRaw
 from numpy import ndarray
 from pandas import Series, DataFrame
 from portion import Interval
-from tqdm import tqdm
 
 import msc.dataset.dataset
 from msc.config import get_config
@@ -326,55 +324,109 @@ def get_raw_from_interval(patient_data_df, interval: Interval) -> Raw:
 
 
 def add_raws_to_intervals_df(intervals_df: DataFrame, picks, fast_dev_mode=False) -> DataFrame:
-    """
-    Returns a list of raws which correspond to the given intervals which occur completely during a single data file
-    Args:
-        intervals:
-        picks:
-        fast_dev_mode:
-
-    Returns:
-
-    """
     data_index_df = msc.dataset.dataset.get_data_index_df()
+    data_index_df['data_interval'] = data_index_df.apply(
+        lambda data_row: portion.closedopen(data_row["meas_date"], data_row["end_date"]), axis=1)
+
     config = get_config()
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
-    data_index_df_rows = list(data_index_df.iterrows())
-    counter = itertools.count()
-    for data_idx, data_row in tqdm(data_index_df_rows, desc="loading data files"):
-        row_interval = portion.closedopen(data_row["meas_date"], data_row["end_date"])
 
-        # add a column specifying whether the seizure interval is in the data row
-        intervals_df['in_data_file'] = intervals_df.ictal_interval.apply(lambda interval: interval in row_interval)
+    def get_fpath(data_row):
+        return f"{dataset_path}/{data_row['package']}/{data_row['patient']}/{data_row['admission']}/{data_row['recording']}/{data_row['fname']}"
 
-        if not intervals_df['in_data_file'].any():
-            # don't load file if no intervals are requested from it
-            continue
+    data_index_df['fpath'] = data_index_df.apply(get_fpath, axis=1)
 
-        # fast dev mode break after 3 data files
-        counter_id = next(counter)
-        if fast_dev_mode and counter_id > 3:
-            break
+    #     add enveloping data file to intervals_df
 
-        # load raw data file
-        raw_path = f"{dataset_path}/{data_row['package']}/{data_row['patient']}/{data_row['admission']}/{data_row['recording']}/{data_row['fname']}"
-        raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
-        picks = [p for p in picks if p in raw.info["ch_names"]]
-        raw = raw.pick(picks)
-        raw = raw.resample(config['TASK']['RESAMPLE'])
+    def get_enveloping_data_fpath(interval_row):
+        patient_data_df = data_index_df[data_index_df['patient'] == interval_row.name[0]]
+        enveloping_data_rows = patient_data_df[data_index_df.data_interval.apply(lambda row: interval_row.window_interval in row)]
+        assert len(enveloping_data_rows) <= 1, "Error: found more than one enveloping data file"
+        if len(enveloping_data_rows) == 0:
+            return None
+        else:
+            # enveloping_data_interval = enveloping_data_rows.data_interval.item()
+            enveloping_data_fpath = enveloping_data_rows.head(1).fpath.item()
+            return enveloping_data_fpath
 
-        def add_raw_intervals(interval_row):
-            # crop raw data to interval
-            start_time = (interval_row.lower - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
-            end_time = (interval_row.upper - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
-            raw_interval = raw.copy().crop(start_time, end_time)
-            return raw_interval
+    intervals_df['enveloping_data_fpath'] = intervals_df.apply(get_enveloping_data_fpath, axis=1)
 
-        # add raw window_interval
-        intervals_df.loc[intervals_df['in_data_file'], "raw"] = intervals_df[
-            intervals_df['in_data_file']].window_interval.apply(add_raw_intervals)
+    def get_raws(data_file_interval_group):
 
-    return intervals_df.drop(columns='in_data_file')
+
+    grouped_interval_df = intervals_df.groupby('enveloping_data_fname')
+
+
+#
+# def add_raws_to_intervals_df(intervals_df: DataFrame, picks, fast_dev_mode=False) -> DataFrame:
+#     """
+#     Returns a list of raws which correspond to the given intervals which occur completely during a single data file
+#     Args:
+#         intervals:
+#         picks:
+#         fast_dev_mode:
+#
+#     Returns:
+#
+#     """
+#     data_index_df = msc.dataset.dataset.get_data_index_df()
+#     config = get_config()
+#     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
+#     data_index_df_rows = list(data_index_df.iterrows())
+#     counter = itertools.count()
+#     for data_idx, data_row in tqdm(data_index_df_rows, desc="loading data files"):
+#         row_interval = portion.closedopen(data_row["meas_date"], data_row["end_date"])
+#
+#         # add a column specifying whether the seizure interval is in the data row
+#         intervals_df['in_data_file'] = intervals_df.ictal_interval.apply(lambda interval: interval in row_interval)
+#
+#         if not intervals_df['in_data_file'].any():
+#             # don't load file if no intervals are requested from it
+#             continue
+#
+#         # fast dev mode break after 3 data files
+#         counter_id = next(counter)
+#         if fast_dev_mode and counter_id > 3:
+#             break
+#
+#         # load raw data file
+#         raw_path = f"{dataset_path}/{data_row['package']}/{data_row['patient']}/{data_row['admission']}/{data_row['recording']}/{data_row['fname']}"
+#         raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
+#         picks = [p for p in picks if p in raw.info["ch_names"]]
+#         raw = raw.pick(picks)
+#         raw = raw.resample(config['TASK']['RESAMPLE'])
+#
+#         def get_raw_segment(window_interval):
+#             """gets an interval row and returns a matching raw segment"""
+#             # crop raw data to interval
+#
+#             start_time = (
+#                     window_interval.lower - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+#             end_time = (window_interval.upper - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+#
+#             raw_crop_lower, raw_crop_upper = max(start_time, 0), min(end_time, raw.times[-1])
+#             raw_segment = raw.copy().crop(raw_crop_lower, raw_crop_upper)
+#             return [raw_segment, timedelta(seconds=raw_crop_lower) + raw.info["meas_date"],
+#                     timedelta(seconds=raw_crop_upper) + raw.info["meas_date"]]
+#
+#         # add raw window_interval
+#         intervals_df.loc[intervals_df['in_data_file']] = apply_and_concat(
+#             intervals_df.loc[intervals_df['in_data_file']], 'window_interval', get_raw_segment,
+#             ["raw", "raw_lower", "raw_upper"])
+#
+#         # intervals_df.loc[
+#         #     intervals_df['in_data_file']].apply(get_raw_segment, axis=1, result_type="expand")
+#
+#         temp = 5
+#
+#     return intervals_df.drop(columns='in_data_file')
+#
+
+def apply_and_concat(dataframe: DataFrame, field: str, func, column_names: List[str]):
+    return pd.concat((
+        dataframe,
+        dataframe[field].apply(
+            lambda cell: pd.Series(func(cell), index=column_names))), axis=1)
 
 
 def get_patient_data_index(patient: str) -> DataFrame:

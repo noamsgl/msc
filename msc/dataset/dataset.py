@@ -113,6 +113,30 @@ class baseDataset:
         if self.fast_dev_mode:
             print(f"WARNING! {self.fast_dev_mode=} !!! Results are incomplete.")
 
+    @staticmethod
+    def parse_datetime_interval(interval_str):
+        """"""
+        pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
+
+        def converter(val):
+            # noinspection PyUnresolvedReferences
+            import datetime
+
+            return eval(val)
+
+        interval = portion.from_string(interval_str, conv=converter, bound=pattern)
+        return interval
+
+    @staticmethod
+    def file_loader(dataset_dir):
+        """returns a generator object which iterates the folder dataset_dir. Yields tuples like (window_id, x)."""
+        for file in os.listdir(dataset_dir):
+            if file.endswith('.pkl'):
+                window_id = int(re.search(r'\d+', file).group(0))
+                x = pickle.load(open(f"{dataset_dir}/{file}", 'rb'))
+                assert isinstance(x, ndarray), "error: the file loaded is not a numpy array"
+                yield window_id, x.reshape(-1)
+
 
 class XDataset(baseDataset):
     """
@@ -205,6 +229,8 @@ class SeizuresDataset(XDataset):
                    "seizure_num": ictal_idx[1],
                    "ictal_interval": sample_row.ictal_interval,
                    "window_interval": sample_row.window_interval,
+                   "raw_lower": sample_row.raw_lower,
+                   "raw_upper": sample_row.raw_upper,
                    "window_id": window_id,
                    "fname": fname,
                    "label": y,
@@ -288,26 +314,7 @@ class PSPDataset(predictionDataset):
         assert os.path.isfile(f"{dataset_dir}/dataset.csv"), "error: dataset.csv file not found"
         self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
 
-        def parse_datetime_interval(interval_str):
-            pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
 
-            def converter(val):
-                # noinspection PyUnresolvedReferences
-                import datetime
-
-                return eval(val)
-
-            interval = portion.from_string(interval_str, conv=converter, bound=pattern)
-            return interval
-
-        def file_loader(dataset_dir):
-            """returns a generator object which iterates the folder dataset_dir. Yields tuples like (window_id, x)."""
-            for file in os.listdir(dataset_dir):
-                if file.endswith('.pkl'):
-                    window_id = int(re.search(r'\d+', file).group(0))
-                    x = pickle.load(open(f"{dataset_dir}/{file}", 'rb'))
-                    assert isinstance(x, ndarray), "error: the file loaded is not a numpy array"
-                    yield window_id, x.reshape(-1)
 
         windows_dict = {window_id: x for window_id, x in file_loader(dataset_dir)}
         self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name].reshape(-1), axis=1)
