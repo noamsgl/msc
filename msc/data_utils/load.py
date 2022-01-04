@@ -1,3 +1,4 @@
+import itertools
 import os
 import sys
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from pandas import Series, DataFrame
 from portion import Interval
 from tqdm import tqdm
 
+import msc.dataset.dataset
 from msc.config import get_config
 
 mne.set_log_level(False)
@@ -165,6 +167,7 @@ def datasets(H, F, L, dt, offset, device, *, fpath: str, resample_sfreq, picks: 
 
 def get_interval_from_raw(raw: Raw) -> Interval:
     """
+    # todo: test this
     Return a portion.Interval with the end points equal to the beginning and end of the raw segment, respectively.
     Args:
         raw:
@@ -322,49 +325,56 @@ def get_raw_from_interval(patient_data_df, interval: Interval) -> Raw:
     return raw
 
 
-def get_raws_from_data_and_intervals(patient_data_df: DataFrame, picks, intervals, fast_dev_mode: bool = False):
+def add_raws_to_intervals_df(intervals_df: DataFrame, picks, fast_dev_mode=False) -> DataFrame:
     """
     Returns a list of raws which correspond to the given intervals which occur completely during a single data file
     Args:
-        picks:
-        patient_data_df:
         intervals:
+        picks:
         fast_dev_mode:
 
     Returns:
 
     """
+    data_index_df = msc.dataset.dataset.get_data_index_df()
     config = get_config()
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
-    raws = []
-    patient_data_df_rows = list(patient_data_df.iterrows())
-    # if fast_dev_mode:
-    #     patient_data_df_rows = patient_data_df_rows[:1]
-    for idx, row in tqdm(patient_data_df_rows, desc="loading patient data"):
+    data_index_df_rows = list(data_index_df.iterrows())
+    counter = itertools.count()
+    for data_idx, data_row in tqdm(data_index_df_rows, desc="loading data files"):
+        row_interval = portion.closedopen(data_row["meas_date"], data_row["end_date"])
 
-        raw_interval = portion.closedopen(row["meas_date"], row["end_date"])
+        # add a column specifying whether the seizure interval is in the data row
+        intervals_df['in_data_file'] = intervals_df.ictal_interval.apply(lambda interval: interval in row_interval)
 
-        intervals_during_raw = [interval for interval in intervals if
-                                interval in raw_interval]
-        if len(intervals_during_raw) == 0:
+        if not intervals_df['in_data_file'].any():
+            # don't load file if no intervals are requested from it
             continue
 
+        # fast dev mode break after 3 data files
+        counter_id = next(counter)
+        if fast_dev_mode and counter_id > 3:
+            break
+
         # load raw data file
-        raw_path = f"{dataset_path}/{row['package']}/{row['patient']}/{row['admission']}/{row['recording']}/{row['fname']}"
+        raw_path = f"{dataset_path}/{data_row['package']}/{data_row['patient']}/{data_row['admission']}/{data_row['recording']}/{data_row['fname']}"
         raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
         picks = [p for p in picks if p in raw.info["ch_names"]]
         raw = raw.pick(picks)
         raw = raw.resample(config['TASK']['RESAMPLE'])
 
-
-        for interval in intervals_during_raw:
+        def add_raw_intervals(interval_row):
             # crop raw data to interval
-            start_time = (interval.lower - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
-            end_time = (interval.upper - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+            start_time = (interval_row.lower - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+            end_time = (interval_row.upper - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
             raw_interval = raw.copy().crop(start_time, end_time)
-            raws.append(raw_interval)
+            return raw_interval
 
-    return raws
+        # add raw window_interval
+        intervals_df.loc[intervals_df['in_data_file'], "raw"] = intervals_df[
+            intervals_df['in_data_file']].window_interval.apply(add_raw_intervals)
+
+    return intervals_df.drop(columns='in_data_file')
 
 
 def get_patient_data_index(patient: str) -> DataFrame:
