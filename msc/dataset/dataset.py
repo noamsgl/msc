@@ -322,7 +322,7 @@ class SeizuresDataset(XDataset):
         T = self.T_max
         N = sfreq * T
 
-        return torch.linspace(0, 1, 1000)
+        return torch.linspace(0, T, int(N))
 
     def get_train_y(self, num_channels: int = 2) -> Tensor:
         train_y = torch.stack(
