@@ -37,7 +37,10 @@ if __name__ == '__main__':
 
     # load data
     data_dir = None
-    dataset = UniformDataset.generate_dataset(N=1000, L=1000)
+    dataset = UniformDataset.generate_dataset(N=1000, L=1000, fast_dev_mode=False)
+    # data_dir = r"C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae\UNIFORM\20220105T172312"
+    # dataset = UniformDataset(data_dir)
+    exit()
 
     data_dir = r"C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae\SEIZURES\20220103T101554"
     if data_dir is None:

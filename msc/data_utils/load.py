@@ -345,7 +345,7 @@ def add_raws_to_intervals_df(intervals_df: DataFrame, picks, fast_dev_mode=False
         row_interval = portion.closedopen(data_row["meas_date"], data_row["end_date"])
 
         # add a column specifying whether the seizure interval is in the data row
-        intervals_df['in_data_file'] = intervals_df.ictal_interval.apply(lambda interval: interval in row_interval)
+        intervals_df['in_data_file'] = intervals_df.window_interval.apply(lambda interval: interval in row_interval)
 
         if not intervals_df['in_data_file'].any():
             # don't load file if no intervals are requested from it
@@ -358,6 +358,7 @@ def add_raws_to_intervals_df(intervals_df: DataFrame, picks, fast_dev_mode=False
 
         # load raw data file
         raw_path = f"{dataset_path}/{data_row['package']}/{data_row['patient']}/{data_row['admission']}/{data_row['recording']}/{data_row['fname']}"
+        print(f"reading file {raw_path}")
         raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
         picks = [p for p in picks if p in raw.info["ch_names"]]
         raw = raw.pick(picks)

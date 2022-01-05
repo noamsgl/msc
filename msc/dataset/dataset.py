@@ -148,7 +148,7 @@ class RawDataset(baseDataset):
 
         """
         # pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
-        pattern = r"Timestamp\('.{3,20}'\)"
+        pattern = r"Timestamp\('.{3,30}'\)"
 
         def converter(val):
             # noinspection PyUnresolvedReferences
@@ -166,11 +166,12 @@ class RawDataset(baseDataset):
             self.samples_df = self.samples_df.reset_index()
             windows_dict = {window_id: x[:d, :] for window_id, x in self.file_loader(self.dataset_dir)}
             self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name], axis=1)
-            self.samples_df['interval'] = self.samples_df['interval'].apply(self.parse_datetime_interval)
+            self.samples_df['interval'] = self.samples_df['window_interval'].apply(self.parse_datetime_interval)
             self.samples_df['lower'] = self.samples_df['interval'].apply(lambda i: i.lower)
             self.samples_df['upper'] = self.samples_df['interval'].apply(lambda i: i.upper)
             self.data_loaded = True
-            self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
+            # todo: fix this for SeizuresDataset
+            # self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
         # self.labels = list(self.samples_df.label)
         except Exception as e:
             raise e
@@ -363,7 +364,7 @@ class UniformDataset(RawDataset):
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
         assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
         self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
-        self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
+        # self.samples_df = self.samples_df.set_index(['window_id'])
         self.dataset_dir = dataset_dir
         self.data_loaded = False
         self.num_channels = num_channels
@@ -412,22 +413,16 @@ class UniformDataset(RawDataset):
 
         print("starting to process raw files")
         counter = itertools.count()
-        for ictal_idx, sample_row in intervals_and_raws.dropna().iterrows():
+        for window_idx, sample_row in intervals_and_raws.dropna().iterrows():
             # create samples_df row
             window_id = next(counter)
             fname = f"{output_dir}/window_{window_id}.pkl"
-            # create label and label_desc
-            y = config['TASK']['ICTAL_LABEL']
-            y_desc = "ictal"
             # append row to samples_df
-            row = {"patient_name": ictal_idx[0],
-                   "seizure_num": ictal_idx[1],
-                   "ictal_interval": sample_row.ictal_interval,
+            row = {"package": sample_row.package,
+                   "patient": sample_row.patient,
                    "window_interval": sample_row.window_interval,
                    "window_id": window_id,
                    "fname": fname,
-                   "label": y,
-                   "label_desc": y_desc
                    }
             samples_df = samples_df.append(row, ignore_index=True)
 
