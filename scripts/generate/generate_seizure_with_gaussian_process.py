@@ -44,11 +44,13 @@ if __name__ == '__main__':
     else:
         dataset = SeizuresDataset(data_dir, preload_data=True)
 
-    # set number of channels (d)
+    # set signal properties
     d = 2
+    sfreq = 256  #todo: get from dataset
+
 
     # get X (times), Y (samples)
-    train_x = dataset.get_train_x(num_channels=d)
+    train_x = dataset.get_train_x(sfreq=sfreq, num_channels=d)
     train_y = dataset.get_train_y(num_channels=d)
 
     likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=d)

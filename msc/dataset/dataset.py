@@ -154,6 +154,7 @@ class SeizuresDataset(XDataset):
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
         assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
         self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
+        self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
         self.dataset_dir = dataset_dir
         self.data_loaded = False
         self.num_channels = num_channels
@@ -161,6 +162,7 @@ class SeizuresDataset(XDataset):
         if preload_data:
             self._load_data()
 
+    'patient_name'
 
     @staticmethod
     def parse_datetime_interval(interval_str: str) -> Interval:
@@ -184,20 +186,21 @@ class SeizuresDataset(XDataset):
         interval = portion.from_string(interval_str, conv=converter, bound=pattern)
         return interval
 
-
     def _load_data(self):
         try:
             print("loading")
             d = self.num_channels
+            self.samples_df = self.samples_df.reset_index()
             windows_dict = {window_id: x[:d, :] for window_id, x in self.file_loader(self.dataset_dir)}
             self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name], axis=1)
             self.samples_df['interval'] = self.samples_df['interval'].apply(self.parse_datetime_interval)
             self.samples_df['lower'] = self.samples_df['interval'].apply(lambda i: i.lower)
             self.samples_df['upper'] = self.samples_df['interval'].apply(lambda i: i.upper)
             self.data_loaded = True
+            self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
         # self.labels = list(self.samples_df.label)
         except Exception as e:
-            print(f"Failed to load data!")
+            raise e
 
     @classmethod
     def generate_dataset(cls, seizures_index_df: DataFrame, fast_dev_mode: bool = False,
@@ -300,7 +303,15 @@ class SeizuresDataset(XDataset):
         else:
             raise ValueError("incorrect format")
 
-    def get_train_x(self) -> Tensor:
+    @property
+    def T_max(self):
+        def get_interval_length(interval: Interval):
+            assert isinstance(interval, Interval), "Error: interval is not of type Interval"
+            return (interval.upper - interval.lower).total_seconds()
+
+        return self.samples_df.interval.apply(get_interval_length).max()
+
+    def get_train_x(self, sfreq, num_channels) -> Tensor:
         """
         return the time axis
         Args:
@@ -308,7 +319,9 @@ class SeizuresDataset(XDataset):
         Returns:
 
         """
-        pass
+        T = self.T_max
+        N = sfreq * T
+
         return torch.linspace(0, 1, 1000)
 
     def get_train_y(self, num_channels: int = 2) -> Tensor:
@@ -385,7 +398,6 @@ class PSPDataset(predictionDataset):
         else:
             raise ValueError("incorrect format")
 
-
     @staticmethod
     def parse_datetime_interval(interval_str: str) -> Interval:
         """
@@ -406,7 +418,6 @@ class PSPDataset(predictionDataset):
 
         interval = portion.from_string(interval_str, conv=converter, bound=pattern)
         return interval
-
 
 
 class MaskedDataset(PSPDataset):
