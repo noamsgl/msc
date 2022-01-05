@@ -8,9 +8,12 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 import portion
+import torch
 import yaml
 from numpy import ndarray
 from pandas import DataFrame, Series
+from portion import Interval
+from torch import Tensor
 
 from msc.config import get_config
 from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
@@ -113,6 +116,16 @@ class baseDataset:
         if self.fast_dev_mode:
             print(f"WARNING! {self.fast_dev_mode=} !!! Results are incomplete.")
 
+    @staticmethod
+    def file_loader(dataset_dir):
+        """returns a generator object which iterates the folder dataset_dir. Yields tuples like (window_id, x)."""
+        for file in os.listdir(dataset_dir):
+            if file.endswith('.pkl'):
+                window_id = int(re.search(r'\d+', file).group(0))
+                x = pickle.load(open(f"{dataset_dir}/{file}", 'rb'))
+                assert isinstance(x, ndarray), "error: the file loaded is not a numpy array"
+                yield window_id, x
+
 
 class XDataset(baseDataset):
     """
@@ -130,18 +143,61 @@ class SeizuresDataset(XDataset):
     @classmethod generate_dataset() can be used to generate one from scratch.
     """
 
-    def __init__(self, dataset_dir: str):
+    def __init__(self, dataset_dir: str, num_channels=2, preload_data=False):
         """
         Args:
             data_index_df:
             fast_dev_mode:
             picks:
         """
-        # baseDataset.__init__(self, fast_dev_mode)
         super().__init__()
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
         assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
         self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
+        self.dataset_dir = dataset_dir
+        self.data_loaded = False
+        self.num_channels = num_channels
+
+        if preload_data:
+            self._load_data()
+
+
+    @staticmethod
+    def parse_datetime_interval(interval_str: str) -> Interval:
+        """
+        parses an interval time stamp
+        Args:
+            interval_str:
+
+        Returns: Interval with the resolved end points
+
+        """
+        # pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
+        pattern = r"Timestamp\('.{3,20}'\)"
+
+        def converter(val):
+            # noinspection PyUnresolvedReferences
+            from pandas import Timestamp
+
+            return eval(val)
+
+        interval = portion.from_string(interval_str, conv=converter, bound=pattern)
+        return interval
+
+
+    def _load_data(self):
+        try:
+            print("loading")
+            d = self.num_channels
+            windows_dict = {window_id: x[:d, :] for window_id, x in self.file_loader(self.dataset_dir)}
+            self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name], axis=1)
+            self.samples_df['interval'] = self.samples_df['interval'].apply(self.parse_datetime_interval)
+            self.samples_df['lower'] = self.samples_df['interval'].apply(lambda i: i.lower)
+            self.samples_df['upper'] = self.samples_df['interval'].apply(lambda i: i.upper)
+            self.data_loaded = True
+        # self.labels = list(self.samples_df.label)
+        except Exception as e:
+            print(f"Failed to load data!")
 
     @classmethod
     def generate_dataset(cls, seizures_index_df: DataFrame, fast_dev_mode: bool = False,
@@ -233,30 +289,33 @@ class SeizuresDataset(XDataset):
         samples_df.to_csv(samples_df_path)
         return cls(output_dir)
 
-    def _write_metadata(self):
-        # The path of the metadata file
-        # todo: refactor this.
-        # implement with as YAML
+    def get_X(self):
+        return np.vstack(self.samples_df.x)
 
-        raise NotImplemented("see todo")
-        path = os.path.join(data_dir, 'dataset.txt')
-        config = get_config()
-        with open(path, 'w') as file:
-            # Datetime
-            file.write(f'Dataset Creation DateTime: {dataset_timestamp}\n\n')
+    def get_labels(self, format='num'):
+        if format == 'desc':
+            return list(self.samples_df.label_desc)
+        elif format == 'num':
+            return list(self.samples_df.label)
+        else:
+            raise ValueError("incorrect format")
 
-            # Dataset metdata
-            file.write('\nDataset Metadata\n')
-            file.write('***************\n')
-            file.write(f'Fast Dev Mode: {self.fast_dev_mode}\n')
-            file.write(f'Patient Id: {pat_id}\n')
-            file.write(f'Features Type: {features_desc}\n')
-            file.write(f'Channel Selection: {picks}\n')
-            file.write(f"Resample Frequency: {config['TASK']['RESAMPLE']}\n")
-            file.write(f"Preictal Min. Diff. (hours): {config['TASK']['PREICTAL_MIN_DIFF_HOURS']}\n")
-            file.write(f"Interictal Min. Diff. (hours): {config['TASK']['INTERICTAL_MIN_DIFF_HOURS']}\n")
-            file.write(f"Preictal Label: {config['TASK']['PREICTAL_LABEL']}\n")
-            file.write(f"Interictal Label: {config['TASK']['INTERICTAL_LABEL']}\n")
+    def get_train_x(self) -> Tensor:
+        """
+        return the time axis
+        Args:
+
+        Returns:
+
+        """
+        pass
+        return torch.linspace(0, 1, 1000)
+
+    def get_train_y(self, num_channels: int = 2) -> Tensor:
+        train_y = torch.stack(
+            []
+            , -1)
+        return train_y
 
 
 class predictionDataset(baseDataset):
@@ -288,31 +347,10 @@ class PSPDataset(predictionDataset):
         assert os.path.isfile(f"{dataset_dir}/dataset.csv"), "error: dataset.csv file not found"
         self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
 
-        def parse_datetime_interval(interval_str):
-            pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
-
-            def converter(val):
-                # noinspection PyUnresolvedReferences
-                import datetime
-
-                return eval(val)
-
-            interval = portion.from_string(interval_str, conv=converter, bound=pattern)
-            return interval
-
-        def file_loader(dataset_dir):
-            """returns a generator object which iterates the folder dataset_dir. Yields tuples like (window_id, x)."""
-            for file in os.listdir(dataset_dir):
-                if file.endswith('.pkl'):
-                    window_id = int(re.search(r'\d+', file).group(0))
-                    x = pickle.load(open(f"{dataset_dir}/{file}", 'rb'))
-                    assert isinstance(x, ndarray), "error: the file loaded is not a numpy array"
-                    yield window_id, x.reshape(-1)
-
-        windows_dict = {window_id: x for window_id, x in file_loader(dataset_dir)}
+        windows_dict = {window_id: x for window_id, x in self.file_loader(dataset_dir)}
         self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name].reshape(-1), axis=1)
 
-        self.samples_df['interval'] = self.samples_df['interval'].apply(parse_datetime_interval)
+        self.samples_df['interval'] = self.samples_df['interval'].apply(self.parse_datetime_interval)
         # self.labels = list(self.samples_df.label)
         self.samples_df['lower'] = self.samples_df['interval'].apply(lambda i: i.lower)
         self.samples_df['upper'] = self.samples_df['interval'].apply(lambda i: i.upper)
@@ -346,6 +384,29 @@ class PSPDataset(predictionDataset):
             return list(self.samples_df.label)
         else:
             raise ValueError("incorrect format")
+
+
+    @staticmethod
+    def parse_datetime_interval(interval_str: str) -> Interval:
+        """
+        parses an interval time stamp
+        Args:
+            interval_str:
+
+        Returns: Interval with the resolved end points
+
+        """
+        pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
+
+        def converter(val):
+            # noinspection PyUnresolvedReferences
+            import datetime
+
+            return eval(val)
+
+        interval = portion.from_string(interval_str, conv=converter, bound=pattern)
+        return interval
+
 
 
 class MaskedDataset(PSPDataset):
