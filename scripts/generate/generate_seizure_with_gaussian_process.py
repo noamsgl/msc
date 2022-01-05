@@ -5,8 +5,8 @@ Output a single, randomly generated seizure
 
 
 """
-import matplotlib.pyplot as plt
 import gpytorch
+import matplotlib.pyplot as plt
 import torch
 
 from msc import config
@@ -15,7 +15,7 @@ from msc.dataset.dataset import get_data_index_df, SeizuresDataset, get_seizures
 
 class MultitaskGPSeizureModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood):
-        super(MultitaskGPModel, self).__init__(train_x, train_y, likelihood)
+        super(MultitaskGPSeizureModel, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.MultitaskMean(
             gpytorch.means.ConstantMean(), num_tasks=2
         )
@@ -46,12 +46,12 @@ if __name__ == '__main__':
 
     # set signal properties
     d = 2
-    sfreq = 256  #todo: get from dataset
-
+    sfreq = 256  # todo: get from dataset
+    crop_seconds = 400
 
     # get X (times), Y (samples)
-    train_x = dataset.get_train_x(sfreq=sfreq, num_channels=d)
-    train_y = dataset.get_train_y(num_channels=d)
+    train_x = dataset.get_train_x(sfreq=sfreq, num_channels=d, crop=crop_seconds)
+    train_y = dataset.get_train_y(sfreq, num_channels=d, crop=crop_seconds)
 
     likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=d)
     model = MultitaskGPSeizureModel(train_x, train_y, likelihood)
@@ -77,7 +77,6 @@ if __name__ == '__main__':
         print('Iter %d/%d - Loss: %.3f' % (i + 1, training_iterations, loss.item()))
         optimizer.step()
 
-
     # make predictions
 
     # Set into eval mode
@@ -93,5 +92,3 @@ if __name__ == '__main__':
         predictions = likelihood(model(test_x))
         mean = predictions.mean
         lower, upper = predictions.confidence_region()
-
-

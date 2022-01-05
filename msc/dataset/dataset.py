@@ -311,7 +311,7 @@ class SeizuresDataset(XDataset):
 
         return self.samples_df.interval.apply(get_interval_length).max()
 
-    def get_train_x(self, sfreq, num_channels) -> Tensor:
+    def get_train_x(self, sfreq: float, num_channels: int = 2, crop: float = 400) -> Tensor:
         """
         return the time axis
         Args:
@@ -321,13 +321,19 @@ class SeizuresDataset(XDataset):
         """
         T = self.T_max
         N = sfreq * T
+        crop_idx = int(sfreq * crop)
+        return torch.linspace(0, T, int(N))[:crop_idx]
 
-        return torch.linspace(0, T, int(N))
+    def get_train_y(self, sfreq, num_channels: int = 2, crop: float = 400) -> Tensor:
+        def pad(tensor, length):
+            """right zero-padding on last dimension to length"""
+            delta = int(length - tensor.shape[-1])
+            return torch.nn.functional.pad(tensor, (0, delta), mode='constant', value=0)
 
-    def get_train_y(self, num_channels: int = 2) -> Tensor:
-        train_y = torch.stack(
-            []
-            , -1)
+        N = sfreq * self.T_max
+        crop_idx = int(sfreq * crop)
+        padded = torch.stack([pad(torch.tensor(x[:num_channels]), N)[..., :crop_idx] for x in self.samples_df.x])
+        train_y = padded
         return train_y
 
 
