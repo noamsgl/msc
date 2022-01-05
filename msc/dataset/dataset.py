@@ -17,7 +17,7 @@ from torch import Tensor
 
 from msc.config import get_config
 from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
-from msc.dataset.build_dataset import add_window_intervals
+from msc.dataset.build_dataset import add_window_intervals, get_random_intervals
 
 
 def static_vars(**kwargs):
@@ -46,8 +46,10 @@ def get_data_index_df():
         config = get_config()
         # noinspection PyTypeChecker
         data_index_fpath = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/data_index.csv"
-
-        data_index_df = pd.read_csv(data_index_fpath, index_col=0, parse_dates=['meas_date', 'end_date'])
+        try:
+            data_index_df = pd.read_csv(data_index_fpath, index_col=0, parse_dates=['meas_date', 'end_date'])
+        except FileNotFoundError:
+            print("file not found: check the config file")
     return data_index_df
 
 
@@ -127,42 +129,13 @@ class baseDataset:
                 yield window_id, x
 
 
-class XDataset(baseDataset):
+class RawDataset(baseDataset):
     """
     The base class for datasets without labels.
     """
 
     def __init__(self):
         super().__init__()
-
-
-class SeizuresDataset(XDataset):
-    """
-    A class for a dataset composed of seizures only.
-    Regular instantiation (__init__()) can be used for loading an existing dataset.
-    @classmethod generate_dataset() can be used to generate one from scratch.
-    """
-
-    def __init__(self, dataset_dir: str, num_channels=2, preload_data=False):
-        """
-        Args:
-            data_index_df:
-            fast_dev_mode:
-            picks:
-        """
-        super().__init__()
-        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
-        assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
-        self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
-        self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
-        self.dataset_dir = dataset_dir
-        self.data_loaded = False
-        self.num_channels = num_channels
-
-        if preload_data:
-            self._load_data()
-
-    'patient_name'
 
     @staticmethod
     def parse_datetime_interval(interval_str: str) -> Interval:
@@ -201,6 +174,85 @@ class SeizuresDataset(XDataset):
         # self.labels = list(self.samples_df.label)
         except Exception as e:
             raise e
+
+    def get_X(self):
+        return np.vstack(self.samples_df.x)
+
+    def get_labels(self, format='num'):
+        if format == 'desc':
+            return list(self.samples_df.label_desc)
+        elif format == 'num':
+            return list(self.samples_df.label)
+        else:
+            raise ValueError("incorrect format")
+
+    @property
+    def T_max(self):
+        def get_interval_length(interval: Interval):
+            assert isinstance(interval, Interval), "Error: interval is not of type Interval"
+            return (interval.upper - interval.lower).total_seconds()
+
+        return self.samples_df.interval.apply(get_interval_length).max()
+
+    def get_train_x(self, sfreq: float, num_channels: int = 2, crop: float = 400) -> Tensor:
+        """
+        return the time axis
+        Args:
+
+        Returns:
+
+        """
+        if not self.data_loaded:
+            print("loading data")
+            self._load_data()
+
+        T = self.T_max
+        N = sfreq * T
+        crop_idx = int(sfreq * crop)
+        return torch.linspace(0, T, int(N))[:crop_idx]
+
+    def get_train_y(self, sfreq, num_channels: int = 2, crop: float = 400) -> Tensor:
+        if not self.data_loaded:
+            print("loading data")
+            self._load_data()
+
+        def pad(tensor, length):
+            """right zero-padding on last dimension to length"""
+            delta = int(length - tensor.shape[-1])
+            return torch.nn.functional.pad(tensor, (0, delta), mode='constant', value=0)
+
+        N = sfreq * self.T_max
+        crop_idx = int(sfreq * crop)
+        padded = torch.stack([pad(torch.tensor(x[:num_channels]), N)[..., :crop_idx] for x in self.samples_df.x])
+        train_y = padded
+        return train_y
+
+
+class SeizuresDataset(RawDataset):
+    """
+    A class for a dataset composed of seizures only.
+    Regular instantiation (__init__()) can be used for loading an existing dataset.
+    @classmethod generate_dataset() can be used to generate one from scratch.
+    """
+
+    def __init__(self, dataset_dir: str, num_channels=2, preload_data=False):
+        """
+        Args:
+            data_index_df:
+            fast_dev_mode:
+            picks:
+        """
+        super().__init__()
+        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
+        assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
+        self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
+        self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
+        self.dataset_dir = dataset_dir
+        self.data_loaded = False
+        self.num_channels = num_channels
+
+        if preload_data:
+            self._load_data()
 
     @classmethod
     def generate_dataset(cls, seizures_index_df: DataFrame, fast_dev_mode: bool = False,
@@ -292,49 +344,113 @@ class SeizuresDataset(XDataset):
         samples_df.to_csv(samples_df_path)
         return cls(output_dir)
 
-    def get_X(self):
-        return np.vstack(self.samples_df.x)
 
-    def get_labels(self, format='num'):
-        if format == 'desc':
-            return list(self.samples_df.label_desc)
-        elif format == 'num':
-            return list(self.samples_df.label)
-        else:
-            raise ValueError("incorrect format")
+class UniformDataset(RawDataset):
+    """
+    A class for a dataset composed of seizures only.
+    Regular instantiation (__init__()) can be used for loading an existing dataset.
+    @classmethod generate_dataset() can be used to generate one from scratch.
+    """
 
-    @property
-    def T_max(self):
-        def get_interval_length(interval: Interval):
-            assert isinstance(interval, Interval), "Error: interval is not of type Interval"
-            return (interval.upper - interval.lower).total_seconds()
-
-        return self.samples_df.interval.apply(get_interval_length).max()
-
-    def get_train_x(self, sfreq: float, num_channels: int = 2, crop: float = 400) -> Tensor:
+    def __init__(self, dataset_dir: str, num_channels=2, preload_data=True):
         """
-        return the time axis
         Args:
+            data_index_df:
+            fast_dev_mode:
+            picks:
+        """
+        super().__init__()
+        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
+        assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
+        self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
+        self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
+        self.dataset_dir = dataset_dir
+        self.data_loaded = False
+        self.num_channels = num_channels
 
+        if preload_data:
+            self._load_data()
+
+    @classmethod
+    def generate_dataset(cls, N=1000, L=1000, fast_dev_mode: bool = False,
+                         picks: Sequence[str] = PicksOptions.common_channels, output_dir: str = None):
+        """
+        Gets the seizure intervals,
+        Iterates over the data files
         Returns:
 
         """
-        T = self.T_max
-        N = sfreq * T
-        crop_idx = int(sfreq * crop)
-        return torch.linspace(0, T, int(N))[:crop_idx]
+        config = get_config()
+        create_time = get_time_as_str()
+        if output_dir is None:
+            # noinspection PyTypeChecker
+            output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/UNIFORM/{create_time}"
 
-    def get_train_y(self, sfreq, num_channels: int = 2, crop: float = 400) -> Tensor:
-        def pad(tensor, length):
-            """right zero-padding on last dimension to length"""
-            delta = int(length - tensor.shape[-1])
-            return torch.nn.functional.pad(tensor, (0, delta), mode='constant', value=0)
+        print(f"Creating Output Directory {output_dir}")
+        os.makedirs(output_dir, exist_ok=True)
 
-        N = sfreq * self.T_max
-        crop_idx = int(sfreq * crop)
-        padded = torch.stack([pad(torch.tensor(x[:num_channels]), N)[..., :crop_idx] for x in self.samples_df.x])
-        train_y = padded
-        return train_y
+        metadata = {"creation_time": create_time,
+                    "fast_dev_mode": fast_dev_mode,
+                    "picks": picks,
+                    "sfreq": config['TASK']['RESAMPLE']}
+
+        with open(f"{output_dir}/dataset.yml", 'w') as metadata_file:
+            yaml.dump(metadata, metadata_file, default_flow_style=False)
+
+        # initialize samples_df
+        samples_df = pd.DataFrame(
+            columns=['patient_name', 'window_interval', 'window_id', 'fname', 'label', 'label_desc'])
+
+
+        # convert ictal intervals into window intervals (expand with time before and after)
+        window_intervals: DataFrame = get_random_intervals(N=N, L=L)
+
+        print("starting to load raw files")
+        # load Raws
+
+        intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
+
+        print("starting to process raw files")
+        counter = itertools.count()
+        for ictal_idx, sample_row in intervals_and_raws.dropna().iterrows():
+            # create samples_df row
+            window_id = next(counter)
+            fname = f"{output_dir}/window_{window_id}.pkl"
+            # create label and label_desc
+            y = config['TASK']['ICTAL_LABEL']
+            y_desc = "ictal"
+            # append row to samples_df
+            row = {"patient_name": ictal_idx[0],
+                   "seizure_num": ictal_idx[1],
+                   "ictal_interval": sample_row.ictal_interval,
+                   "window_interval": sample_row.window_interval,
+                   "window_id": window_id,
+                   "fname": fname,
+                   "label": y,
+                   "label_desc": y_desc
+                   }
+            samples_df = samples_df.append(row, ignore_index=True)
+
+            # Get X
+            X = sample_row.raw.get_data()
+
+            # Scale X
+            # from sklearn.preprocessing import StandardScaler
+            # X = StandardScaler().fit_transform(X)
+
+            # Perform Feature Extraction (Optional)
+            # X = mne_features.feature_extraction.FeatureExtractor(sfreq=config['TASK']['RESAMPLE'],
+            #                                                      selected_funcs=selected_funcs).fit_transform(X)
+            # X = extract_feature_from_numpy(X, selected_func, float(config['TASK']['RESAMPLE']))
+
+            # Dump to file
+            print(f"dumping {window_id=} to {fname=}")
+            pickle.dump(X, open(fname, 'wb'))
+
+        samples_df_path = f"{output_dir}/samples_df.csv"
+        print(f"saving samples_df to {samples_df_path=}")
+        samples_df.to_csv(samples_df_path)
+        return cls(output_dir)
 
 
 class predictionDataset(baseDataset):

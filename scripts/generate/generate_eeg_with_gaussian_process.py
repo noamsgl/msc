@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import torch
 
 from msc import config
-from msc.dataset.dataset import get_data_index_df, SeizuresDataset, get_seizures_index_df
+from msc.dataset.dataset import get_data_index_df, SeizuresDataset, get_seizures_index_df, UniformDataset
 
 
 class MultitaskGPSeizureModel(gpytorch.models.ExactGP):
@@ -37,6 +37,8 @@ if __name__ == '__main__':
 
     # load data
     data_dir = None
+    dataset = UniformDataset.generate_dataset(N=1000, L=1000)
+
     data_dir = r"C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae\SEIZURES\20220103T101554"
     if data_dir is None:
         data_index_df = get_data_index_df()
