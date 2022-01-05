@@ -1,4 +1,5 @@
 """
+todo: seizure
 Conditions a generative model to produce seizures of shape (n_channels, n_times)
 
 Output a single, randomly generated seizure
@@ -14,6 +15,9 @@ from msc.dataset.dataset import get_data_index_df, SeizuresDataset, get_seizures
 
 
 class MultitaskGPSeizureModel(gpytorch.models.ExactGP):
+    # todo: Matern(3/2), sample from
+    # todo: C1*Matern + C2*RBF*Periodic
+    # todo: limit to 1000 points
     def __init__(self, train_x, train_y, likelihood):
         super(MultitaskGPSeizureModel, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.MultitaskMean(
@@ -47,7 +51,7 @@ if __name__ == '__main__':
     # set signal properties
     d = 2
     sfreq = 256  # todo: get from dataset
-    crop_seconds = 400
+    crop_seconds = 50
 
     # get X (times), Y (samples)
     train_x = dataset.get_train_x(sfreq=sfreq, num_channels=d, crop=crop_seconds)
