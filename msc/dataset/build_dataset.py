@@ -7,10 +7,12 @@ Building Datasets
 
 from datetime import timedelta
 
+import numpy as np
 import portion
 from pandas import DataFrame
-import numpy as np
 from portion import Interval
+
+from msc import config
 
 
 def get_random_intervals(N=1000, L=1000):
@@ -29,21 +31,22 @@ def get_random_intervals(N=1000, L=1000):
 
     samples = data_index_df.sample(N, replace=True)
 
+    sfreq = int(config['TASK']['RESAMPLE'])
+
     def get_interval(data_file_row) -> Interval:
-        sfreq = data_file_row['sfreq']
-        interval_length = L / data_file_row['sfreq']  # length of segment in seconds
+        """gets a random timestamped Interval"""
+        interval_length = L / sfreq  # length of segment in seconds
 
         recording_start = data_file_row['meas_date']
         recording_end = data_file_row['end_date']
         recording_length = (recording_end - recording_start).total_seconds()
 
         interval_start = recording_start + timedelta(seconds=recording_length * np.random.uniform(0, 0.5))
-        interval_end = interval_start + timedelta(seconds=sfreq*interval_length)
+        interval_end = interval_start + timedelta(seconds=interval_length)
         return portion.closedopen(interval_start, interval_end)
 
     samples['window_interval'] = samples.apply(get_interval, axis=1)
     return samples
-
 
 
 def add_window_intervals(intervals_df: DataFrame, time_minutes_before=0, time_minutes_after=0) -> DataFrame:

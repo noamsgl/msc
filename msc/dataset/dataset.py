@@ -47,10 +47,11 @@ def get_data_index_df():
         # noinspection PyTypeChecker
         data_index_fpath = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/data_index.csv"
         try:
-            data_index_df = pd.read_csv(data_index_fpath, index_col=0, parse_dates=['meas_date', 'end_date'])
-        except FileNotFoundError:
-            print("file not found: check the config file")
-    return data_index_df
+            get_data_index_df.data_index_df = pd.read_csv(data_index_fpath, index_col=0, parse_dates=['meas_date', 'end_date'])
+        except FileNotFoundError as e:
+            print(f"file {data_index_fpath} not found: check the config file")
+            raise e
+    return get_data_index_df.data_index_df
 
 
 @static_vars(seizures_index_df=None)
