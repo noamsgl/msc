@@ -15,7 +15,7 @@ from portion import Interval
 from msc import config
 
 
-def get_random_intervals(N=1000, L=1000):
+def get_random_intervals(N=1000, L=1000) -> DataFrame:
     """
     Samples N random time intervals from data_df
     Args:
@@ -83,3 +83,4 @@ def save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, confi
     Returns: samples_df, Xs, Ys
 
     """
+

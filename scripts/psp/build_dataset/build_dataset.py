@@ -17,7 +17,6 @@ import argparse
 import os.path
 
 from msc.config import get_config
-from msc.data_utils.features import save_dataset_to_disk
 from msc.data_utils.load import PicksOptions, get_time_as_str
 
 

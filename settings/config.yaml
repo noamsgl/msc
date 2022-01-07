@@ -33,5 +33,5 @@ RESULTS:
     RESULTS_DIR: "/cs_storage/noamsi/results"
 
 DATASET: epilepsiae
-RAW_MACHINE: MIRIAM
+RAW_MACHINE: LOCAL
 RESULTS_MACHINE: LOCAL

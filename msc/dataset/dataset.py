@@ -3,6 +3,7 @@ import itertools
 import os
 import pickle
 import re
+from datetime import timedelta
 from typing import Sequence
 
 import numpy as np
@@ -16,6 +17,7 @@ from portion import Interval
 from torch import Tensor
 
 from msc.config import get_config
+from msc.data_utils import get_preictal_intervals, get_interictal_intervals
 from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
 from msc.dataset.build_dataset import add_window_intervals, get_random_intervals
 
@@ -169,7 +171,6 @@ class RawDataset(baseDataset):
 
         interval = portion.from_string(interval_str, conv=converter, bound=pattern)
         return interval
-
 
     def _load_data(self):
         try:
@@ -422,19 +423,17 @@ class UniformDataset(RawDataset):
         with open(f"{output_dir}/dataset.yml", 'w') as metadata_file:
             yaml.dump(metadata, metadata_file, default_flow_style=False)
 
-        # initialize samples_df
-        samples_df = pd.DataFrame(
-            columns=['patient_name', 'window_interval', 'window_id', 'fname', 'label', 'label_desc'])
-
         # convert ictal intervals into window intervals (expand with time before and after)
         window_intervals: DataFrame = get_random_intervals(N=N, L=L)
 
-        print("starting to load raw files")
         # load Raws
-
+        print("starting to load raw files")
         intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
 
         print("starting to process raw files")
+        # initialize samples_df
+        samples_df = pd.DataFrame(
+            columns=['patient_name', 'window_interval', 'window_id', 'fname', 'label', 'label_desc'])
         counter = itertools.count()
         for window_idx, sample_row in intervals_and_raws.dropna().iterrows():
             # create samples_df row
@@ -540,6 +539,85 @@ class PSPDataset(predictionDataset):
             self.samples_df = pd.merge_asof(self.samples_df.sort_values(by='lower'), seizures_index_df, left_on="lower",
                                             right_on="onset", by=['package', 'patient'], direction='forward')
 
+    @classmethod
+    def generate_dataset(cls, patient_name, selected_func, fast_dev_mode: bool = False,
+                         picks: Sequence[str] = PicksOptions.common_channels, output_dir: str = None):
+        """
+        Gets the seizure intervals,
+        Iterates over the data files
+        Returns:
+
+        """
+        config = get_config()
+        create_time = get_time_as_str()
+        if output_dir is None:
+            # noinspection PyTypeChecker
+            output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/{selected_func}/{patient_name}/{create_time}"
+
+        print(f"Creating Output Directory {output_dir}")
+        os.makedirs(output_dir, exist_ok=True)
+
+        metadata = {"creation_time": create_time,
+                    "patient_name": patient_name,
+                    "fast_dev_mode": fast_dev_mode,
+                    "picks": picks,
+                    "selected_func": selected_func,
+                    "sfreq": config['TASK']['RESAMPLE']}
+
+        with open(f"{output_dir}/dataset.yml", 'w') as metadata_file:
+            yaml.dump(metadata, metadata_file, default_flow_style=False)
+
+        # get intervals
+        preictal_intervals = get_preictal_intervals(patient_name)
+        interictal_intervals = get_interictal_intervals(patient_name)
+
+        intervals = pd.concat([preictal_intervals, interictal_intervals])
+
+        window_intervals = cls.intervals_to_windows(intervals)
+
+        print("starting to load raw files")
+        # load Raws
+        intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
+
+        print("starting to process raw files")
+        # initialize samples_df
+        samples_df = pd.DataFrame(
+            columns=['patient_name', 'window_interval', 'window_id', 'fname', 'label', 'label_desc'])
+        counter = itertools.count()
+        for window_idx, sample_row in intervals_and_raws.dropna().iterrows():
+            # create samples_df row
+            window_id = next(counter)
+            fname = f"{output_dir}/window_{window_id}.pkl"
+            # append row to samples_df
+            row = {"package": sample_row.package,
+                   "patient": sample_row.patient,
+                   "window_interval": sample_row.window_interval,
+                   "window_id": window_id,
+                   "fname": fname,
+                   }
+            samples_df = samples_df.append(row, ignore_index=True)
+
+            # Get X
+            X = sample_row.raw.get_data()
+
+            # Scale X
+            # from sklearn.preprocessing import StandardScaler
+            # X = StandardScaler().fit_transform(X)
+
+            # Perform Feature Extraction (Optional)
+            # X = mne_features.feature_extraction.FeatureExtractor(sfreq=config['TASK']['RESAMPLE'],
+            #                                                      selected_funcs=selected_funcs).fit_transform(X)
+            # X = extract_feature_from_numpy(X, selected_func, float(config['TASK']['RESAMPLE']))
+
+            # Dump to file
+            print(f"dumping {window_id=} to {fname=}")
+            pickle.dump(X, open(fname, 'wb'))
+
+        samples_df_path = f"{output_dir}/samples_df.csv"
+        print(f"saving samples_df to {samples_df_path=}")
+        samples_df.to_csv(samples_df_path)
+        return cls(output_dir)
+
     def get_X(self):
         return np.vstack(self.samples_df.x)
 
@@ -552,25 +630,41 @@ class PSPDataset(predictionDataset):
             raise ValueError("incorrect format")
 
     @staticmethod
-    def parse_datetime_interval(interval_str: str) -> Interval:
-        """
-        parses an interval time stamp
-        Args:
-            interval_str:
+    def intervals_to_windows(intervals: DataFrame, time_minutes=5):
+        def split_intervals_to_windows(group: DataFrame):
+            start_times = [list(portion.iterate(interval, step=timedelta(minutes=time_minutes))) for interval in
+                           group.interval]
+            windows_in_lists = [
+                [portion.closedopen(times[i], times[i + 1]) for i in range(len(times) - 1)] for times in
+                start_times]
+            windows = list(itertools.chain.from_iterable(windows_in_lists))  # chain together sublists
+            windows_df = DataFrame({"window_interval": windows, "label_desc": group.name})
+            return windows_df
 
-        Returns: Interval with the resolved end points
+        windows = intervals.groupby('label_desc').apply(func=split_intervals_to_windows)
+        return windows
 
-        """
-        pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
 
-        def converter(val):
-            # noinspection PyUnresolvedReferences
-            import datetime
+@staticmethod
+def parse_datetime_interval(interval_str: str) -> Interval:
+    """
+    parses an interval time stamp
+    Args:
+        interval_str:
 
-            return eval(val)
+    Returns: Interval with the resolved end points
 
-        interval = portion.from_string(interval_str, conv=converter, bound=pattern)
-        return interval
+    """
+    pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
+
+    def converter(val):
+        # noinspection PyUnresolvedReferences
+        import datetime
+
+        return eval(val)
+
+    interval = portion.from_string(interval_str, conv=converter, bound=pattern)
+    return interval
 
 
 class MaskedDataset(PSPDataset):
