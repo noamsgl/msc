@@ -47,7 +47,8 @@ def get_data_index_df():
         # noinspection PyTypeChecker
         data_index_fpath = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/data_index.csv"
         try:
-            get_data_index_df.data_index_df = pd.read_csv(data_index_fpath, index_col=0, parse_dates=['meas_date', 'end_date'])
+            get_data_index_df.data_index_df = pd.read_csv(data_index_fpath, index_col=0,
+                                                          parse_dates=['meas_date', 'end_date'])
         except FileNotFoundError as e:
             print(f"file {data_index_fpath} not found: check the config file")
             raise e
@@ -135,8 +136,15 @@ class RawDataset(baseDataset):
     The base class for datasets without labels.
     """
 
-    def __init__(self):
+    def __init__(self, dataset_dir):
         super().__init__()
+        assert os.path.isfile(f"{dataset_dir}/dataset.yml"), "error: dataset.yml not found in dataset_dir"
+        with open(f"{dataset_dir}/dataset.yml", "r") as metadata_stream:
+            try:
+                self.metadata = yaml.load(metadata_stream, Loader=yaml.FullLoader)
+            except yaml.YAMLError as exc:
+                print("problem loading dataset.yml")
+                raise exc
 
     @staticmethod
     def parse_datetime_interval(interval_str: str) -> Interval:
@@ -196,7 +204,7 @@ class RawDataset(baseDataset):
 
         return self.samples_df.interval.apply(get_interval_length).max()
 
-    def get_train_x(self, sfreq: float, num_channels: int = 2, crop: float = 400) -> Tensor:
+    def get_train_x(self, num_channels: int = 2, crop: float = 400) -> Tensor:
         """
         return the time axis
         Args:
@@ -208,12 +216,13 @@ class RawDataset(baseDataset):
             print("loading data")
             self._load_data()
 
+        sfreq = self.metadata.get('sfreq')
         T = self.T_max
         N = sfreq * T
         crop_idx = int(sfreq * crop)
         return torch.linspace(0, T, int(N))[:crop_idx]
 
-    def get_train_y(self, sfreq, num_channels: int = 2, crop: float = 400) -> Tensor:
+    def get_train_y(self, num_channels: int = 2, crop: float = 400) -> Tensor:
         if not self.data_loaded:
             print("loading data")
             self._load_data()
@@ -223,6 +232,7 @@ class RawDataset(baseDataset):
             delta = int(length - tensor.shape[-1])
             return torch.nn.functional.pad(tensor, (0, delta), mode='constant', value=0)
 
+        sfreq = self.metadata.get('sfreq')
         N = sfreq * self.T_max
         crop_idx = int(sfreq * crop)
         padded = torch.stack([pad(torch.tensor(x[:num_channels]), N)[..., :crop_idx] for x in self.samples_df.x])
@@ -361,10 +371,12 @@ class UniformDataset(RawDataset):
             fast_dev_mode:
             picks:
         """
-        super().__init__()
+        super().__init__(dataset_dir)
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
         assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
+
         self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
+
         # self.samples_df = self.samples_df.set_index(['window_id'])
         self.dataset_dir = dataset_dir
         self.data_loaded = False
@@ -402,7 +414,6 @@ class UniformDataset(RawDataset):
         # initialize samples_df
         samples_df = pd.DataFrame(
             columns=['patient_name', 'window_interval', 'window_id', 'fname', 'label', 'label_desc'])
-
 
         # convert ictal intervals into window intervals (expand with time before and after)
         window_intervals: DataFrame = get_random_intervals(N=N, L=L)
