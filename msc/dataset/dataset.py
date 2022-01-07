@@ -13,7 +13,7 @@ import yaml
 from numpy import ndarray
 from pandas import DataFrame, Series
 from portion import Interval
-from torch import Tensor
+from torch import Tensor, nn
 
 from msc.config import get_config
 from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
@@ -178,6 +178,7 @@ class RawDataset(baseDataset):
             self.samples_df['interval'] = self.samples_df['window_interval'].apply(self.parse_datetime_interval)
             self.samples_df['lower'] = self.samples_df['interval'].apply(lambda i: i.lower)
             self.samples_df['upper'] = self.samples_df['interval'].apply(lambda i: i.upper)
+            print("done loading")
             self.data_loaded = True
             # todo: fix this for SeizuresDataset
             # self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
@@ -222,7 +223,8 @@ class RawDataset(baseDataset):
         crop_idx = int(sfreq * crop)
         return torch.linspace(0, T, int(N))[:crop_idx]
 
-    def get_train_y(self, num_channels: int = 2, crop: float = 400) -> Tensor:
+    @torch.no_grad()
+    def get_train_y(self, num_channels: int = 2, crop: float = 400, normalize=True) -> Tensor:
         if not self.data_loaded:
             print("loading data")
             self._load_data()
@@ -237,6 +239,12 @@ class RawDataset(baseDataset):
         crop_idx = int(sfreq * crop)
         padded = torch.stack([pad(torch.tensor(x[:num_channels]), N)[..., :crop_idx] for x in self.samples_df.x])
         train_y = padded
+
+        if normalize:
+            train_y = torch.nn.functional.normalize(train_y - train_y.mean(dim=2).unsqueeze(-1), p=2.0, dim=-1)
+            # m = nn.BatchNorm1d(num_features=num_channels, dtype=torch.double)
+            # train_y = m(train_y.double())
+
         return train_y
 
 
