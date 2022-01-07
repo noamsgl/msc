@@ -13,7 +13,7 @@ import yaml
 from numpy import ndarray
 from pandas import DataFrame, Series
 from portion import Interval
-from torch import Tensor, nn
+from torch import Tensor
 
 from msc.config import get_config
 from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
@@ -56,12 +56,14 @@ def get_data_index_df():
 
 
 @static_vars(seizures_index_df=None)
-def get_seizures_index_df():
+def get_seizures_index_df(machine=None):
     if get_seizures_index_df.seizures_index_df is None:
         # get config
         config = get_config()
         # noinspection PyTypeChecker
-        seizures_index_fpath = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/seizures_index.csv"
+        if machine is None:
+            machine = config['RAW_MACHINE']
+        seizures_index_fpath = f"{config['PATH'][machine]['RAW_DATASET']}/seizures_index.csv"
 
         seizures_index_df = pd.read_csv(seizures_index_fpath, parse_dates=['onset', 'offset'],
                                         index_col=0).set_index(['patient', 'seizure_num'])
@@ -168,6 +170,7 @@ class RawDataset(baseDataset):
         interval = portion.from_string(interval_str, conv=converter, bound=pattern)
         return interval
 
+
     def _load_data(self):
         try:
             print("loading")
@@ -241,7 +244,7 @@ class RawDataset(baseDataset):
         train_y = padded
 
         if normalize:
-            train_y = (train_y - train_y.mean())/train_y.std()
+            train_y = (train_y - train_y.mean()) / train_y.std()
             # m = nn.BatchNorm1d(num_features=num_channels, dtype=torch.double)
             # train_y = m(train_y.double())
 
@@ -372,7 +375,7 @@ class UniformDataset(RawDataset):
     @classmethod generate_dataset() can be used to generate one from scratch.
     """
 
-    def __init__(self, dataset_dir: str, num_channels=2, preload_data=True):
+    def __init__(self, dataset_dir: str, num_channels=2, preload_data=True, add_check_isseizure=True):
         """
         Args:
             data_index_df:
@@ -466,6 +469,19 @@ class UniformDataset(RawDataset):
         print(f"saving samples_df to {samples_df_path=}")
         samples_df.to_csv(samples_df_path)
         return cls(output_dir)
+
+    def add_check_isseizure(self):
+        seizures_index_df = get_seizures_index_df()
+
+        def check_isseizure(samples_row) -> bool:
+            patient = samples_row['patient']
+            interval = samples_row['interval']
+            patient_seizures = seizures_index_df.loc[patient]
+            patient_seizures['overlaps_interval'] = patient_seizures.interval.apply(
+                lambda p_interval: p_interval.overlaps(interval))
+            return patient_seizures['overlaps_interval'].any()
+
+        self.samples_df['isseizure'] = self.samples_df.apply(check_isseizure, axis=1)
 
 
 class predictionDataset(baseDataset):
@@ -564,3 +580,9 @@ class MaskedDataset(PSPDataset):
 
     def get_masked_X(self):
         return self.get_X() * self.mask
+
+
+if __name__ == '__main__':
+    dataset_dir = r"C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae\UNIFORM\20220106T165558"
+    dataset = UniformDataset(dataset_dir)
+    samples_df = dataset.samples_df
