@@ -241,7 +241,7 @@ class RawDataset(baseDataset):
         train_y = padded
 
         if normalize:
-            train_y = torch.nn.functional.normalize(train_y - train_y.mean(dim=2).unsqueeze(-1), p=2.0, dim=-1)
+            train_y = (train_y - train_y.mean())/train_y.std()
             # m = nn.BatchNorm1d(num_features=num_channels, dtype=torch.double)
             # train_y = m(train_y.double())
 
