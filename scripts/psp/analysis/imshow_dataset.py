@@ -72,11 +72,11 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     # get the CurrentStudy dataset directory
-    feature_name = askstring('PSP', 'feature_name', initialvalue='phase_lock_val')
-    patient_name = askstring('PSP', 'patient_name', initialvalue='pat_3500')
+    feature_name = askstring('PSP', 'feature_name', initialvalue='max_cross_corr')
+    patient_name = askstring('PSP', 'patient_name', initialvalue='pat_7200')
     config = get_config()
     results_dir = config['PATH'][config['RESULTS_MACHINE']]['RESULTS']
-    datasets_dir = f"{results_dir}/{config['DATASET']}/{feature_name}/surfCO/{patient_name}"
+    datasets_dir = f"{results_dir}/{config['DATASET']}/{feature_name}/{patient_name}"
 
     init_dir = os.getcwd()
     # show an "Open" dialog box and return the path to the selected file
