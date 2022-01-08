@@ -16,8 +16,10 @@ from pandas import DataFrame, Series
 from portion import Interval
 from torch import Tensor
 
+from msc import config
 from msc.config import get_config
 from msc.data_utils import get_preictal_intervals, get_interictal_intervals
+from msc.data_utils.features import extract_feature_from_numpy
 from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
 from msc.dataset.build_dataset import add_window_intervals, get_random_intervals
 
@@ -47,7 +49,7 @@ def get_data_index_df():
         # get config
         config = get_config()
         # noinspection PyTypeChecker
-        data_index_fpath = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/data_index.csv"
+        data_index_fpath = f"{config['PATH'][config['INDEX_MACHINE']]['RAW_DATASET']}/data_index.csv"
         try:
             get_data_index_df.data_index_df = pd.read_csv(data_index_fpath, index_col=0,
                                                           parse_dates=['meas_date', 'end_date'])
@@ -58,14 +60,12 @@ def get_data_index_df():
 
 
 @static_vars(seizures_index_df=None)
-def get_seizures_index_df(machine=None):
+def get_seizures_index_df():
     if get_seizures_index_df.seizures_index_df is None:
         # get config
         config = get_config()
         # noinspection PyTypeChecker
-        if machine is None:
-            machine = config['RAW_MACHINE']
-        seizures_index_fpath = f"{config['PATH'][machine]['RAW_DATASET']}/seizures_index.csv"
+        seizures_index_fpath = f"{config['PATH'][config['INDEX_MACHINE']]['RAW_DATASET']}/seizures_index.csv"
 
         seizures_index_df = pd.read_csv(seizures_index_fpath, parse_dates=['onset', 'offset'],
                                         index_col=0).set_index(['patient', 'seizure_num'])
@@ -125,6 +125,30 @@ class baseDataset:
             print(f"WARNING! {self.fast_dev_mode=} !!! Results are incomplete.")
 
     @staticmethod
+    def parse_datetime_interval(interval_str: str, pattern=None) -> Interval:
+        """
+        parses an interval time stamp
+        Args:
+            interval_str:
+            pattern:
+
+        Returns: Interval with the resolved end points
+
+        """
+        if pattern is None:
+            # pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
+            pattern = r"Timestamp\('.{3,30}'\)"
+
+        def converter(val):
+            # noinspection PyUnresolvedReferences
+            from pandas import Timestamp
+
+            return eval(val)
+
+        interval = portion.from_string(interval_str, conv=converter, bound=pattern)
+        return interval
+
+    @staticmethod
     def file_loader(dataset_dir):
         """returns a generator object which iterates the folder dataset_dir. Yields tuples like (window_id, x)."""
         for file in os.listdir(dataset_dir):
@@ -149,28 +173,6 @@ class RawDataset(baseDataset):
             except yaml.YAMLError as exc:
                 print("problem loading dataset.yml")
                 raise exc
-
-    @staticmethod
-    def parse_datetime_interval(interval_str: str) -> Interval:
-        """
-        parses an interval time stamp
-        Args:
-            interval_str:
-
-        Returns: Interval with the resolved end points
-
-        """
-        # pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
-        pattern = r"Timestamp\('.{3,30}'\)"
-
-        def converter(val):
-            # noinspection PyUnresolvedReferences
-            from pandas import Timestamp
-
-            return eval(val)
-
-        interval = portion.from_string(interval_str, conv=converter, bound=pattern)
-        return interval
 
     def _load_data(self):
         try:
@@ -515,10 +517,10 @@ class PSPDataset(predictionDataset):
         windows_dict = {window_id: x for window_id, x in self.file_loader(dataset_dir)}
         self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name].reshape(-1), axis=1)
 
-        self.samples_df['interval'] = self.samples_df['interval'].apply(self.parse_datetime_interval)
+        self.samples_df['window_interval'] = self.samples_df['window_interval'].apply(self.parse_datetime_interval)
         # self.labels = list(self.samples_df.label)
-        self.samples_df['lower'] = self.samples_df['interval'].apply(lambda i: i.lower)
-        self.samples_df['upper'] = self.samples_df['interval'].apply(lambda i: i.upper)
+        self.samples_df['lower'] = self.samples_df['window_interval'].apply(lambda i: i.lower)
+        self.samples_df['upper'] = self.samples_df['window_interval'].apply(lambda i: i.upper)
 
         if add_next_seizure_info:
             # add time to seizure
@@ -548,7 +550,9 @@ class PSPDataset(predictionDataset):
         Returns:
 
         """
-        config = get_config()
+        if fast_dev_mode:
+            print(f"WARNING! {fast_dev_mode=} !!! Results are incomplete.")
+
         create_time = get_time_as_str()
         if output_dir is None:
             # noinspection PyTypeChecker
@@ -574,7 +578,7 @@ class PSPDataset(predictionDataset):
         intervals = pd.concat([preictal_intervals, interictal_intervals])
 
         window_intervals = cls.intervals_to_windows(intervals)
-
+        window_intervals['patient_name'] = patient_name
         print("starting to load raw files")
         # load Raws
         intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
@@ -588,12 +592,16 @@ class PSPDataset(predictionDataset):
             # create samples_df row
             window_id = next(counter)
             fname = f"{output_dir}/window_{window_id}.pkl"
+
+            y = config['TASK'][f"{sample_row['label_desc'].upper()}_LABEL"]
             # append row to samples_df
-            row = {"package": sample_row.package,
-                   "patient": sample_row.patient,
+
+            row = {"patient_name": sample_row.patient_name,
                    "window_interval": sample_row.window_interval,
                    "window_id": window_id,
                    "fname": fname,
+                   "label": y,
+                   "label_desc": sample_row['label_desc']
                    }
             samples_df = samples_df.append(row, ignore_index=True)
 
@@ -601,19 +609,17 @@ class PSPDataset(predictionDataset):
             X = sample_row.raw.get_data()
 
             # Scale X
-            # from sklearn.preprocessing import StandardScaler
-            # X = StandardScaler().fit_transform(X)
+            from sklearn.preprocessing import StandardScaler
+            X = StandardScaler().fit_transform(X)
 
             # Perform Feature Extraction (Optional)
-            # X = mne_features.feature_extraction.FeatureExtractor(sfreq=config['TASK']['RESAMPLE'],
-            #                                                      selected_funcs=selected_funcs).fit_transform(X)
-            # X = extract_feature_from_numpy(X, selected_func, float(config['TASK']['RESAMPLE']))
+            X = extract_feature_from_numpy(X, selected_func, float(config['TASK']['RESAMPLE']))
 
             # Dump to file
             print(f"dumping {window_id=} to {fname=}")
             pickle.dump(X, open(fname, 'wb'))
 
-        samples_df_path = f"{output_dir}/samples_df.csv"
+        samples_df_path = f"{output_dir}/dataset.csv"
         print(f"saving samples_df to {samples_df_path=}")
         samples_df.to_csv(samples_df_path)
         return cls(output_dir)
@@ -643,28 +649,6 @@ class PSPDataset(predictionDataset):
 
         windows = intervals.groupby('label_desc').apply(func=split_intervals_to_windows)
         return windows
-
-
-@staticmethod
-def parse_datetime_interval(interval_str: str) -> Interval:
-    """
-    parses an interval time stamp
-    Args:
-        interval_str:
-
-    Returns: Interval with the resolved end points
-
-    """
-    pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
-
-    def converter(val):
-        # noinspection PyUnresolvedReferences
-        import datetime
-
-        return eval(val)
-
-    interval = portion.from_string(interval_str, conv=converter, bound=pattern)
-    return interval
 
 
 class MaskedDataset(PSPDataset):

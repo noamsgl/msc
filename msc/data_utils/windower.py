@@ -21,11 +21,12 @@ def get_recording_start(patient: str) -> datetime:
     Returns:
 
     """
-    data_index_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/data_index.csv"
-    data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
+    from msc.dataset.dataset import get_data_index_df
+
+    data_index_df = get_data_index_df()
 
     patient_data_df = data_index_df.loc[data_index_df['patient'] == patient]
-
+    assert len(patient_data_df) > 0, f"Error: no data files for {patient=} found"
     return min(patient_data_df.meas_date)
 
 

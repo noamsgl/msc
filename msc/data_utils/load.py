@@ -16,7 +16,7 @@ from portion import Interval
 from tqdm import tqdm
 
 import msc.dataset.dataset
-from msc.config import get_config
+from msc import config
 
 mne.set_log_level(False)
 
@@ -194,7 +194,6 @@ def load_raw_seizure(package="surf30", patient="pat_92102", seizure_num=3, delta
     """
     import re
     # get seizure index
-    config = get_config()
     seizures_index_path = r"C:\raw_data/epilepsiae/seizures_index.csv"
     df = pd.read_csv(seizures_index_path, index_col=0, parse_dates=['onset', 'offset'])
 
@@ -238,7 +237,6 @@ def load_raw_from_data_row_and_interval(row: Series, interval: Interval) -> Raw:
     Returns:
 
     """
-    config = get_config()
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
     # load raw data
     raw_path = f"{dataset_path}/{row['package']}/{row['patient']}/{row['admission']}/{row['recording']}/{row['fname']}"
@@ -327,53 +325,56 @@ def get_raw_from_interval(patient_data_df, interval: Interval) -> Raw:
 
 def add_raws_to_intervals_df(intervals_df: DataFrame, picks, fast_dev_mode=False) -> DataFrame:
     """
-    Returns a list of raws which correspond to the given intervals which occur completely during a single data file
+    Returns an expanded dataframe with raws which correspond to the given intervals
     Args:
-        intervals:
+        intervals_df:
         picks:
         fast_dev_mode:
 
     Returns:
 
     """
+    fast_dev_counter = itertools.count()
+
     data_index_df = msc.dataset.dataset.get_data_index_df()
-    config = get_config()
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
-    data_index_df_rows = list(data_index_df.iterrows())
-    counter = itertools.count()
-    for data_idx, data_row in tqdm(data_index_df_rows, desc="loading data files"):
-        row_interval = portion.closedopen(data_row["meas_date"], data_row["end_date"])
 
-        # add a column specifying whether the seizure interval is in the data row
-        intervals_df['in_data_file'] = intervals_df.window_interval.apply(lambda interval: interval in row_interval)
+    for patient, intervals in intervals_df.groupby('patient_name'):
+        patient_data_index = data_index_df.loc[data_index_df.patient == patient]
+        data_index_df_rows = list(patient_data_index.iterrows())
+        for data_idx, data_row in tqdm(data_index_df_rows, desc=f"loading data files for patient {patient}"):
+            row_interval = portion.closedopen(data_row["meas_date"], data_row["end_date"])
 
-        if not intervals_df['in_data_file'].any():
-            # don't load file if no intervals are requested from it
-            continue
+            # add a column specifying whether the seizure interval is in the data row
+            intervals_df['in_data_file'] = intervals_df.window_interval.apply(lambda interval: interval in row_interval)
 
-        # fast dev mode break after 3 data files
-        counter_id = next(counter)
-        if fast_dev_mode and counter_id > 3:
-            break
+            if not intervals_df['in_data_file'].any():
+                # don't load file if no intervals are requested from it
+                continue
 
-        # load raw data file
-        raw_path = f"{dataset_path}/{data_row['package']}/{data_row['patient']}/{data_row['admission']}/{data_row['recording']}/{data_row['fname']}"
-        print(f"reading file {raw_path}")
-        raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
-        picks = [p for p in picks if p in raw.info["ch_names"]]
-        raw = raw.pick(picks)
-        raw = raw.resample(config['TASK']['RESAMPLE'])
+            # fast dev mode break after 3 data files
+            counter_id = next(fast_dev_counter)
+            if fast_dev_mode and counter_id > 1:
+                break
 
-        def add_raw_intervals(interval_row):
-            # crop raw data to interval
-            start_time = (interval_row.lower - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
-            end_time = (interval_row.upper - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
-            raw_interval = raw.copy().crop(start_time, end_time)
-            return raw_interval
+            # load raw data file
+            raw_path = f"{dataset_path}/{data_row['package']}/{data_row['patient']}/{data_row['admission']}/{data_row['recording']}/{data_row['fname']}"
+            print(f"reading file {raw_path}")
+            raw = mne.io.read_raw_nicolet(raw_path, ch_type='eeg', preload=True)
+            picks = [p for p in picks if p in raw.info["ch_names"]]
+            raw = raw.pick(picks)
+            raw = raw.resample(config['TASK']['RESAMPLE'])
 
-        # add raw window_interval
-        intervals_df.loc[intervals_df['in_data_file'], "raw"] = intervals_df[
-            intervals_df['in_data_file']].window_interval.apply(add_raw_intervals)
+            def add_raw_intervals(interval_row):
+                # crop raw data to interval
+                start_time = (interval_row.lower - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+                end_time = (interval_row.upper - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+                raw_interval = raw.copy().crop(start_time, end_time)
+                return raw_interval
+
+            # add raw window_interval
+            intervals_df.loc[intervals_df['in_data_file'], "raw"] = intervals_df[
+                intervals_df['in_data_file']].window_interval.apply(add_raw_intervals)
 
     return intervals_df.drop(columns='in_data_file')
 
@@ -387,7 +388,6 @@ def get_patient_data_index(patient: str) -> DataFrame:
     Returns:
 
     """
-    config = get_config()
     package = get_package_from_patient(patient)
 
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
@@ -411,7 +411,6 @@ def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Inte
     Returns:
 
     """
-    config = get_config()
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
     data_index_path = f"{dataset_path}/data_index.csv"
 
@@ -425,7 +424,6 @@ def get_raws_from_intervals(package: str, patient: str, intervals: Sequence[Inte
 
 
 def get_package_from_patient(patient: str) -> str:
-    config = get_config()
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
     patients_index_path = f"{dataset_path}/patients_index.csv"
     patients_df = pd.read_csv(patients_index_path)
