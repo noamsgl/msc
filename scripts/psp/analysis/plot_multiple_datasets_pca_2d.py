@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from msc.dataset.dataset import get_datasets_df
+from msc.dataset import get_datasets_df
 from scripts.psp.analysis.plot_dataset_2d_pca_ import plot_pca_projection
 
 plt.style.use('fivethirtyeight')

@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.dates as mdates
-from datetime import datetime
 
-from msc.dataset.dataset import get_seizures_index_df
+from msc.dataset import get_seizures_index_df
 
 
 def plot_seizure_occurrences_timeline(selected_patient, seizures_index_df, ax=None):

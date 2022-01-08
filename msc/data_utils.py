@@ -1,3 +1,6 @@
+import mne_features
+import portion as P
+
 import itertools
 import os
 import sys
@@ -9,14 +12,14 @@ import mne
 import numpy as np
 import pandas as pd
 import portion
-from mne.io import Raw, BaseRaw
+from mne.io import Raw
 from numpy import ndarray
 from pandas import Series, DataFrame
 from portion import Interval
 from tqdm import tqdm
 
-import msc.dataset.dataset
-from msc import config
+from msc import config, get_data_index_df
+from sklearn.base import BaseEstimator, TransformerMixin
 
 mne.set_log_level(False)
 
@@ -38,42 +41,6 @@ class PicksOptions:
     common_channels: Tuple[str] = COMMON_CHANNELS
     non_eeg_channels: Tuple[str] = ('EOG1', 'EOG2', 'EMG', 'ECG', 'PHO')
     eeg_channels: Tuple[str] = tuple(set(ALL_CHANNELS) - set(non_eeg_channels))
-
-
-class EEGdata:
-    def __init__(self, fpath: str, offset: float = 0, crop: int = 10,
-                 picks: Tuple[str] = PicksOptions.common_channels, verbose: bool = False, l_freq=None, h_freq=None):
-        self.fpath = fpath
-        self.offset = offset
-        self.crop = crop
-        self.picks = picks
-        self.l_freq = l_freq
-        self.h_freq = h_freq
-        self.raw: BaseRaw = self._init_raw_data()
-        # set verbosity
-        self.verbose = verbose
-        mne.set_log_level(verbose)
-
-    def _init_raw_data(self):
-        """
-        load raw data in nicolet (.data & .head) format
-        Returns:
-
-        """
-        extension = os.path.splitext(self.fpath)[1]
-        assert extension == '.data', "unknown extension. currently supports .data"
-
-        raw: Raw = mne.io.read_raw_nicolet(self.fpath, ch_type='eeg', preload=True)
-        raw = raw.pick(self.picks).crop(self.offset, self.offset + self.crop).filter(self.l_freq, self.h_freq)
-        return raw
-
-    def get_data_as_array(self, T, fs, d, return_times=False) -> Union[ndarray, Tuple[ndarray, ndarray]]:
-        raw = self.raw.crop(tmax=T).resample(fs)
-        if return_times:
-            data, times = raw.get_data(return_times=True)
-            return data[:d], times
-        else:
-            return raw.get_data()[:d]
 
 
 def load_raw_data(fpath: str, offset: float = 0, crop: int = 10, picks: Tuple[str] = None,
@@ -105,64 +72,9 @@ def load_raw_data(fpath: str, offset: float = 0, crop: int = 10, picks: Tuple[st
     return raw
 
 
-def load_tensor_dataset(fpath: str, train_length: int = 20,
-                        test_length: int = 10, picks: Tuple[str] = None) -> dict:
-    """ Returns a standardized dataset
-
-    Args:
-        fpath: filepath where .data and .head are located
-        train_length: time length in seconds
-        test_length: time length in seconds
-        picks: list of EEG channels to select from file
-
-    Returns: dict which includes train_x, train_y, test_x, test_y
-
-    """
-    raw: Raw = load_raw_data(fpath, 0, train_length + test_length, picks)
-    data, times = raw.get_data(return_times=True)
-
-    data = (data - np.mean(data)) / np.std(data)
-
-    split_index = np.argmax(times > train_length)
-
-    dataset = {"train_x": torch.Tensor(times[:split_index]),
-               "train_y": torch.Tensor(data[:, :split_index]).T.squeeze(),
-               "test_x": torch.Tensor(times[split_index:]),
-               "test_y": torch.Tensor(data[:, split_index:]).T.squeeze()
-               }
-    return dataset
-
-
 def get_index_from_time(t, times):
     """Get the first index at which `times` (a sorted array of time values) crosses a given time t."""
     return np.argmax(times >= t)
-
-
-def datasets(H, F, L, dt, offset, device, *, fpath: str, resample_sfreq, picks: Tuple[str]):
-    """Deprecated
-        #todo: remove
-     """
-    raw: Raw = mne.io.read_raw_nicolet(fpath, ch_type='eeg', preload=True).pick(picks)
-    raw = raw.resample(resample_sfreq)
-
-    sfreq = int(raw.info['sfreq'])
-    data, times = raw.get_data(return_times=True)
-    data = (data - np.mean(data)) / np.std(data)
-
-    t_start = offset + H
-    t_stop = t_start + L
-    t_start_idx = get_index_from_time(t_start, times)
-    t_stop_idx = get_index_from_time(t_stop, times)
-
-    stepsize = int(dt * sfreq)
-    for t in times[t_start_idx:t_stop_idx:stepsize]:
-        print(f"serving dataset at time {t} seconds")
-        t_ix = get_index_from_time(t, times)
-        train_x = torch.tensor(times[int(t_ix - H * sfreq):t_ix], device=device).float()
-        train_y = torch.tensor(data[:, int(t_ix - H * sfreq):t_ix], device=device).float().T.squeeze()
-        test_x = torch.tensor(times[t_ix:int(t_ix + F * sfreq)], device=device).float()
-        test_y = torch.tensor(data[:, t_ix:int(t_ix + F * sfreq)], device=device).float().T.squeeze()
-        yield t, train_x, train_y, test_x, test_y
 
 
 def get_interval_from_raw(raw: Raw) -> Interval:
@@ -192,30 +104,31 @@ def load_raw_seizure(package="surf30", patient="pat_92102", seizure_num=3, delta
     Returns:
 
     """
-    import re
-    # get seizure index
-    seizures_index_path = r"C:\raw_data/epilepsiae/seizures_index.csv"
-    df = pd.read_csv(seizures_index_path, index_col=0, parse_dates=['onset', 'offset'])
-
-    # filter out seizure row
-    seizure_row = df.loc[(df["package"] == package) & (df["patient"] == patient) & (df["seizure_num"] == seizure_num)]
-
-    # get seizure file path
-    remote_fpath = seizure_row["onset_fpath"].item()[3:-2]  # extract path from string
-    datasets_path, dataset, relative_file_path = re.split('(epilepsiae/)', remote_fpath)
-    local_path = download_file_scp(relative_file_path)
-
-    # get seizure times
-    onset = seizure_row["onset"].item()
-    offset = seizure_row["offset"].item()
-
-    # load and crop seizure data
-    raw = mne.io.read_raw_nicolet(local_path, ch_type='eeg', preload=True)
-    start_time = (onset - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
-    end_time = (offset - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
-    seizure_length = end_time - start_time
-    raw = raw.crop(start_time - delta * seizure_length, end_time + delta * seizure_length)
-    return raw
+    raise NotImplementedError("needs refactoring")
+    # import re
+    # # get seizure index
+    # seizures_index_path = r"C:\raw_data/epilepsiae/seizures_index.csv"
+    # df = pd.read_csv(seizures_index_path, index_col=0, parse_dates=['onset', 'offset'])
+    #
+    # # filter out seizure row
+    # seizure_row = df.loc[(df["package"] == package) & (df["patient"] == patient) & (df["seizure_num"] == seizure_num)]
+    #
+    # # get seizure file path
+    # remote_fpath = seizure_row["onset_fpath"].item()[3:-2]  # extract path from string
+    # datasets_path, dataset, relative_file_path = re.split('(epilepsiae/)', remote_fpath)
+    # local_path = download_file_scp(relative_file_path)
+    #
+    # # get seizure times
+    # onset = seizure_row["onset"].item()
+    # offset = seizure_row["offset"].item()
+    #
+    # # load and crop seizure data
+    # raw = mne.io.read_raw_nicolet(local_path, ch_type='eeg', preload=True)
+    # start_time = (onset - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+    # end_time = (offset - raw.info["meas_date"].replace(tzinfo=None)).total_seconds()
+    # seizure_length = end_time - start_time
+    # raw = raw.crop(start_time - delta * seizure_length, end_time + delta * seizure_length)
+    # return raw
 
 
 def raw_to_array(raw, T, fs, d, return_times=False) -> Union[ndarray, Tuple[ndarray, ndarray]]:
@@ -336,7 +249,7 @@ def add_raws_to_intervals_df(intervals_df: DataFrame, picks, fast_dev_mode=False
     """
     fast_dev_counter = itertools.count()
 
-    data_index_df = msc.dataset.dataset.get_data_index_df()
+    data_index_df = get_data_index_df()
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
 
     for patient, intervals in intervals_df.groupby('patient_name'):
@@ -438,3 +351,194 @@ def get_time_as_str(fmt=None):
     if fmt is None:
         fmt = iso_8601_format
     return datetime.now().strftime(fmt)
+
+
+def get_recording_start(patient: str) -> datetime:
+    """
+    Get first measurement timestamp for patient from data_index.csv
+    Args:
+        patient:
+
+    Returns:
+
+    """
+    from msc.dataset import get_data_index_df
+
+    data_index_df = get_data_index_df()
+
+    patient_data_df = data_index_df.loc[data_index_df['patient'] == patient]
+    assert len(patient_data_df) > 0, f"Error: no data files for {patient=} found"
+    return min(patient_data_df.meas_date)
+
+
+def get_recording_end(patient: str) -> datetime:
+    """
+    Get last measurement timestamp for the patient from data_index.csv
+    Args:
+        patient:
+
+    Returns:
+
+    """
+    data_index_path = f"{config['PATH'][config['INDEX_MACHINE']]['RAW_DATASET']}/data_index.csv"
+    data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
+
+    patient_data_df = data_index_df.loc[data_index_df['patient'] == patient]
+
+    return max(patient_data_df.end_date)
+
+
+def get_interictal_intervals(patient_name: str) -> DataFrame:
+    """
+    return interictal time intervals
+
+    Args:
+        patient_name: | example "pat_4000"
+
+    Returns:
+
+    """
+    min_diff = timedelta(hours=float(config['TASK']['INTERICTAL_MIN_DIFF_HOURS']))
+    recording_start = get_recording_start(patient_name)
+    recording_end = get_recording_end(patient_name)
+
+    onsets = get_seiz_onsets(patient_name)
+
+    first_interictal = P.open(recording_start, onsets[0] - min_diff)
+    middle_interictals = [P.open(onsets[i] + min_diff, onsets[i + 1] - min_diff) for i in range(0, len(onsets) - 1)]
+    last_interictal = P.open(onsets[-1] + min_diff, recording_end)
+    interictals = [first_interictal] + middle_interictals + [last_interictal]
+    return DataFrame({"interval": interictals, "label_desc": "interictal"})
+
+
+def get_preictal_intervals(patient_name: str) -> DataFrame:
+    """
+    return preictal time intervals
+
+    Args:
+        patient_name: | example "pat_4000"
+
+    Returns:
+
+    """
+    onsets = get_seiz_onsets(patient_name)
+    preictals = [P.open(onset - timedelta(hours=float(config['TASK']['PREICTAL_MIN_DIFF_HOURS'])), onset) for onset in
+                 onsets]
+    return DataFrame({"interval": preictals, "label_desc": "preictal"})
+
+
+def get_seiz_onsets(patient_name: str) -> List[datetime]:
+    """
+    returns seizure onset times.
+    Args:
+        patient_name: | example "pat_4000"
+
+    Returns:
+
+    """
+    seizures_index_path = f"{config['PATH'][config['INDEX_MACHINE']]['RAW_DATASET']}/seizures_index.csv"
+
+    seizures_index_df = pd.read_csv(seizures_index_path, parse_dates=['onset', 'offset'])
+
+    patient_seizures_df = seizures_index_df.loc[seizures_index_df['patient'] == patient_name]
+
+    return list(patient_seizures_df.onset)
+
+def standardize(X: ndarray) -> ndarray:
+    """
+    shift and scale X to 0 mean and 1 std
+    Args:
+        X:
+
+    Returns:
+
+    """
+    X = X - np.mean(X)
+    X = X / np.std(X)
+    return X
+
+
+def cross_correlation(chan_1, chan_2, Fs, tau):
+    """
+    Compute the cross correlation between two channels.
+    It is a linear measure of dependence between two signals, that also
+    allows fixed delays between two spatially distant EEG signals to accommodate
+    potential signal propagation.
+    Args:
+        chan_1:
+        chan_2:
+        Fs: signal sample frequency
+        tau:
+
+    Returns:
+    """
+    assert len(chan_1) == len(chan_2)
+    N = len(chan_1)
+    if tau < 0:
+        return cross_correlation(chan_2, chan_1, Fs, -tau)
+    else:
+        cc = 0
+        for t in range(1, N - Fs * tau):
+            cc += chan_1[t + Fs * tau] * chan_2[Fs * tau]
+        cc = cc / (N - Fs * tau)
+        return cc
+
+
+def maximal_cross_correlation(chan_1: ndarray, chan_2: ndarray, Fs, tau_min=-0.5, tau_max=0.5) -> float:
+    """Return the maximal cross correlation between two channels.
+    It is a linear measure of dependence between two signals, that also
+    allows fixed delays between two spatially distant EEG signals to accommodate
+    potential signal propagation.
+
+    Mormann, Florian, et al. "On the predictability of epileptic seizures."
+    Clinical neurophysiology 116.3 (2005): 569-587.
+
+
+    Args:
+        chan_1: first EEG channel
+        chan_2: second EEG channel
+        Fs: signal sample frequency
+        tau_min: bottom range of taus to check (s)
+        tau_max: top rang of taus to check (s)
+
+    Returns:
+    """
+    taus = np.linspace(tau_min, tau_max, num=50, endpoint=True)
+    return np.max([cross_correlation(chan_1, chan_2, tau, Fs) for tau in taus])
+
+
+class SynchronicityFeatures(BaseEstimator, TransformerMixin):
+    def __init__(self, feature_code):
+        assert feature_code in ["C", "S", "DSTL", "SPLV", "H", "Coh"], "feature_code invalid, check paper"
+        self.feature_code = feature_code
+
+    def fit(self, X, y=None):
+        return self  # nothing else to do
+
+    def transform(self, X, y=None):
+        n_channels = len(X)
+        a = np.arange(n_channels)
+        b = np.arange(n_channels)
+        xa, xb = np.meshgrid(a, b)
+        z = maximal_cross_correlation(xa, xb)
+        if self.feature_code == "C":
+            return maximal_cross_correlation(X)
+
+
+def extract_feature_from_numpy(X: ndarray, selected_func: str, sfreq, frame_length_sec=5) -> ndarray:
+    """
+    Extract features at every 5s frame and concatenate into feature window
+    Args:
+        X:
+        selected_func: function name (see mne-features)
+        sfreq:
+        frame_length_sec:
+
+    Returns:
+
+    """
+    frames = np.array_split(X, X.shape[-1] // (sfreq * frame_length_sec), axis=1)
+    features = [mne_features.get_bivariate_funcs(sfreq=sfreq)[selected_func](f) for f in
+                frames]
+    X = np.vstack(features).T
+    return X

@@ -7,11 +7,8 @@ Output a single, randomly generated seizure
 
 """
 import gpytorch
-import matplotlib.pyplot as plt
-import torch
 
-from msc import config
-from msc.dataset.dataset import get_data_index_df, SeizuresDataset, get_seizures_index_df, UniformDataset
+from msc.dataset import UniformDataset
 
 
 class MultitaskGPSeizureModel(gpytorch.models.ExactGP):

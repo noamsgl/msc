@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from msc.dataset.dataset import get_data_index_df
+from msc.dataset import get_data_index_df
 
 
 def plot_patient_recording_length_histogram(data_index_df, ax=None):

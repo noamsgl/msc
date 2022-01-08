@@ -11,16 +11,13 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
 
-from msc.config import get_config
-from msc.data_utils.load import get_time_as_str
-from msc.dataset.dataset import PSPDataset, get_datasets_df
+from msc.data_utils import get_time_as_str
+from msc.dataset import PSPDataset, get_datasets_df
 
 
 def main(save_to_disk=True, feature_names=('max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr'),
          patient_names=('pat_3500', 'pat_3700', 'pat_7200'),
          classifier_names=None) -> DataFrame:
-    # get config
-    config = get_config()
 
     # load data
     # initialize datasets

@@ -16,12 +16,13 @@ from pandas import DataFrame, Series
 from portion import Interval
 from torch import Tensor
 
+import msc.data_utils as data_utils
 from msc import config
-from msc.config import get_config
-from msc.data_utils import get_preictal_intervals, get_interictal_intervals
-from msc.data_utils.features import extract_feature_from_numpy
-from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
-from msc.dataset.build_dataset import add_window_intervals, get_random_intervals
+
+
+# from msc.data_utils import get_preictal_intervals, get_interictal_intervals
+# from msc.data_utils.features import extract_feature_from_numpy
+# from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
 
 
 def static_vars(**kwargs):
@@ -46,8 +47,6 @@ def static_vars(**kwargs):
 @static_vars(data_index_df=None)
 def get_data_index_df():
     if get_data_index_df.data_index_df is None:
-        # get config
-        config = get_config()
         # noinspection PyTypeChecker
         data_index_fpath = f"{config['PATH'][config['INDEX_MACHINE']]['RAW_DATASET']}/data_index.csv"
         try:
@@ -62,8 +61,6 @@ def get_data_index_df():
 @static_vars(seizures_index_df=None)
 def get_seizures_index_df():
     if get_seizures_index_df.seizures_index_df is None:
-        # get config
-        config = get_config()
         # noinspection PyTypeChecker
         seizures_index_fpath = f"{config['PATH'][config['INDEX_MACHINE']]['RAW_DATASET']}/seizures_index.csv"
 
@@ -86,9 +83,6 @@ def get_seizures_index_df():
 
 def get_datasets_df(feature_names=('max_cross_corr', 'phase_lock_val', 'spect_corr', 'time_corr', 'nonlin_interdep'),
                     patient_names=('pat_3500', 'pat_3700', 'pat_7200')):
-    # get config
-    config = get_config()
-
     # initialize datasets
     feature_names = feature_names
     patient_names = patient_names
@@ -113,13 +107,68 @@ def get_datasets_df(feature_names=('max_cross_corr', 'phase_lock_val', 'spect_co
     return datasets_df.dropna()
 
 
+def add_window_intervals(intervals_df: DataFrame, time_minutes_before=0, time_minutes_after=0) -> DataFrame:
+    """
+    Adds window_interval to dataframe with ictal_intervals.
+    Args:
+        intervals_df:
+        time_minutes_before:
+        time_minutes_after:
+    Returns:
+    """
+
+    assert 'ictal_interval' in intervals_df
+
+    def expand(interval):
+        return portion.closedopen(interval.lower - timedelta(minutes=time_minutes_before),
+                                  interval.upper + timedelta(minutes=time_minutes_after))
+
+    intervals_df["window_interval"] = intervals_df['ictal_interval'].apply(expand)
+
+    return intervals_df
+
+
+def get_random_intervals(N=1000, L=1000) -> DataFrame:
+    """
+    Samples N random time intervals from data_df
+    Args:
+        N: Number of intervals to sample
+        L: number of samples per interval
+
+    Returns:
+
+    """
+
+    data_index_df = get_data_index_df()
+
+    samples = data_index_df.sample(N, replace=True)
+
+    sfreq = int(config['TASK']['RESAMPLE'])
+
+    def get_interval(data_file_row) -> Interval:
+        """gets a random timestamped Interval"""
+        interval_length = L / sfreq  # length of segment in seconds
+
+        recording_start = data_file_row['meas_date']
+        recording_end = data_file_row['end_date']
+        recording_length = (recording_end - recording_start).total_seconds()
+
+        interval_start = recording_start + timedelta(seconds=recording_length * np.random.uniform(0, 0.5))
+        interval_end = interval_start + timedelta(seconds=interval_length)
+        return portion.closedopen(interval_start, interval_end)
+
+    samples['window_interval'] = samples.apply(get_interval, axis=1)
+    return samples
+
+
 class baseDataset:
     """
     The dataset base class
     """
 
-    def __init__(self, fast_dev_mode: bool = False):
-        self.create_time = get_time_as_str()
+    def __init__(self, dataset_dir, fast_dev_mode: bool = False):
+        self.dataset_dir = dataset
+        self.create_time = data_utils.get_time_as_str()
         self.fast_dev_mode = fast_dev_mode
         if self.fast_dev_mode:
             print(f"WARNING! {self.fast_dev_mode=} !!! Results are incomplete.")
@@ -165,7 +214,7 @@ class RawDataset(baseDataset):
     """
 
     def __init__(self, dataset_dir):
-        super().__init__()
+        super().__init__(dataset_dir)
         assert os.path.isfile(f"{dataset_dir}/dataset.yml"), "error: dataset.yml not found in dataset_dir"
         with open(f"{dataset_dir}/dataset.yml", "r") as metadata_stream:
             try:
@@ -177,9 +226,8 @@ class RawDataset(baseDataset):
     def _load_data(self):
         try:
             print("loading")
-            d = self.num_channels
             self.samples_df = self.samples_df.reset_index()
-            windows_dict = {window_id: x[:d, :] for window_id, x in self.file_loader(self.dataset_dir)}
+            windows_dict = {window_id: x for window_id, x in self.file_loader(self.dataset_dir)}
             self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name], axis=1)
             self.samples_df['interval'] = self.samples_df['window_interval'].apply(self.parse_datetime_interval)
             self.samples_df['lower'] = self.samples_df['interval'].apply(lambda i: i.lower)
@@ -211,7 +259,7 @@ class RawDataset(baseDataset):
 
         return self.samples_df.interval.apply(get_interval_length).max()
 
-    def get_train_x(self, num_channels: int = 2, crop: float = 400) -> Tensor:
+    def get_train_x(self, crop: float = 400) -> Tensor:
         """
         return the time axis
         Args:
@@ -264,11 +312,11 @@ class SeizuresDataset(RawDataset):
     def __init__(self, dataset_dir: str, num_channels=2, preload_data=False):
         """
         Args:
-            data_index_df:
-            fast_dev_mode:
-            picks:
+            dataset_dir:
+            num_channels:
+            preload_data:
         """
-        super().__init__()
+        super().__init__(dataset_dir)
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
         assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
         self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
@@ -282,7 +330,7 @@ class SeizuresDataset(RawDataset):
 
     @classmethod
     def generate_dataset(cls, seizures_index_df: DataFrame, fast_dev_mode: bool = False,
-                         picks: Sequence[str] = PicksOptions.common_channels, output_dir: str = None,
+                         picks: Sequence[str] = data_utils.PicksOptions.common_channels, output_dir: str = None,
                          time_minutes_before=0, time_minutes_after=0):
         """
         Gets the seizure intervals,
@@ -290,8 +338,7 @@ class SeizuresDataset(RawDataset):
         Returns:
 
         """
-        config = get_config()
-        create_time = get_time_as_str()
+        create_time = data_utils.get_time_as_str()
         if output_dir is None:
             # noinspection PyTypeChecker
             output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/SEIZURES/{create_time}"
@@ -326,7 +373,7 @@ class SeizuresDataset(RawDataset):
         print("starting to load raw files")
         # load Raws
 
-        intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
+        intervals_and_raws: DataFrame = data_utils.add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
 
         print("starting to process raw files")
         counter = itertools.count()
@@ -381,9 +428,10 @@ class UniformDataset(RawDataset):
     def __init__(self, dataset_dir: str, num_channels=2, preload_data=True, add_check_isseizure=True):
         """
         Args:
-            data_index_df:
-            fast_dev_mode:
-            picks:
+            dataset_dir:
+            num_channels:
+            preload_data:
+            add_check_isseizure:
         """
         super().__init__(dataset_dir)
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
@@ -401,15 +449,14 @@ class UniformDataset(RawDataset):
 
     @classmethod
     def generate_dataset(cls, N=1000, L=1000, fast_dev_mode: bool = False,
-                         picks: Sequence[str] = PicksOptions.common_channels, output_dir: str = None):
+                         picks: Sequence[str] = data_utils.PicksOptions.common_channels, output_dir: str = None):
         """
         Gets the seizure intervals,
         Iterates over the data files
         Returns:
 
         """
-        config = get_config()
-        create_time = get_time_as_str()
+        create_time = data_utils.get_time_as_str()
         if output_dir is None:
             # noinspection PyTypeChecker
             output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/UNIFORM/{create_time}"
@@ -430,7 +477,7 @@ class UniformDataset(RawDataset):
 
         # load Raws
         print("starting to load raw files")
-        intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
+        intervals_and_raws: DataFrame = data_utils.add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
 
         print("starting to process raw files")
         # initialize samples_df
@@ -524,7 +571,6 @@ class PSPDataset(predictionDataset):
 
         if add_next_seizure_info:
             # add time to seizure
-            config = get_config()
             # noinspection PyTypeChecker
             raw_dataset_path = config['PATH']['LOCAL']['RAW_DATASET']
             seizures_index_path = f"{raw_dataset_path}/seizures_index.csv"
@@ -543,7 +589,7 @@ class PSPDataset(predictionDataset):
 
     @classmethod
     def generate_dataset(cls, patient_name, selected_func, fast_dev_mode: bool = False,
-                         picks: Sequence[str] = PicksOptions.common_channels, output_dir: str = None):
+                         picks: Sequence[str] = data_utils.PicksOptions.common_channels, output_dir: str = None):
         """
         Gets the seizure intervals,
         Iterates over the data files
@@ -553,7 +599,7 @@ class PSPDataset(predictionDataset):
         if fast_dev_mode:
             print(f"WARNING! {fast_dev_mode=} !!! Results are incomplete.")
 
-        create_time = get_time_as_str()
+        create_time = data_utils.get_time_as_str()
         if output_dir is None:
             # noinspection PyTypeChecker
             output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/{selected_func}/{patient_name}/{create_time}"
@@ -572,8 +618,8 @@ class PSPDataset(predictionDataset):
             yaml.dump(metadata, metadata_file, default_flow_style=False)
 
         # get intervals
-        preictal_intervals = get_preictal_intervals(patient_name)
-        interictal_intervals = get_interictal_intervals(patient_name)
+        preictal_intervals = data_utils.get_preictal_intervals(patient_name)
+        interictal_intervals = data_utils.get_interictal_intervals(patient_name)
 
         intervals = pd.concat([preictal_intervals, interictal_intervals])
 
@@ -581,7 +627,7 @@ class PSPDataset(predictionDataset):
         window_intervals['patient_name'] = patient_name
         print("starting to load raw files")
         # load Raws
-        intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
+        intervals_and_raws: DataFrame = data_utils.add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
 
         print("starting to process raw files")
         # initialize samples_df
@@ -613,7 +659,7 @@ class PSPDataset(predictionDataset):
             X = StandardScaler().fit_transform(X)
 
             # Perform Feature Extraction (Optional)
-            X = extract_feature_from_numpy(X, selected_func, float(config['TASK']['RESAMPLE']))
+            X = data_utils.extract_feature_from_numpy(X, selected_func, float(config['TASK']['RESAMPLE']))
 
             # Dump to file
             print(f"dumping {window_id=} to {fname=}")
@@ -661,6 +707,6 @@ class MaskedDataset(PSPDataset):
 
 
 if __name__ == '__main__':
-    dataset_dir = r"C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae\UNIFORM\20220106T165558"
+    dataset_dir = r"/results/epilepsiae/UNIFORM/20220106T165558"
     dataset = UniformDataset(dataset_dir)
     samples_df = dataset.samples_df

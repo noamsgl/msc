@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-from msc.dataset.dataset import PSPDataset
+from msc.dataset import PSPDataset
 
 
 def plot_pca_projection(dataset_df_row, ax=None):
