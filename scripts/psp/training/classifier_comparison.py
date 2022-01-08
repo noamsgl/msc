@@ -101,4 +101,4 @@ def main(save_to_disk=True, feature_names=('max_cross_corr', 'phase_lock_val', '
 
 
 if __name__ == '__main__':
-    main()
+    main(feature_names=['max_cross_corr'], patient_names=['pat_3700'])
