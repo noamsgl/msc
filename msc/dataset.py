@@ -563,10 +563,10 @@ class PSPDataset(predictionDataset):
         windows_dict = {window_id: x for window_id, x in self.file_loader(dataset_dir)}
         self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name].reshape(-1), axis=1)
 
-        self.samples_df['window_interval'] = self.samples_df['window_interval'].apply(self.parse_datetime_interval)
+        self.samples_df['interval'] = self.samples_df['interval'].apply(self.parse_datetime_interval)
         # self.labels = list(self.samples_df.label)
-        self.samples_df['lower'] = self.samples_df['window_interval'].apply(lambda i: i.lower)
-        self.samples_df['upper'] = self.samples_df['window_interval'].apply(lambda i: i.upper)
+        self.samples_df['lower'] = self.samples_df['interval'].apply(lambda i: i.lower)
+        self.samples_df['upper'] = self.samples_df['interval'].apply(lambda i: i.upper)
 
         if add_next_seizure_info:
             # add time to seizure
@@ -585,6 +585,30 @@ class PSPDataset(predictionDataset):
             # !assumes seizures_index_df is sorted by onset times!
             self.samples_df = pd.merge_asof(self.samples_df.sort_values(by='lower'), seizures_index_df, left_on="lower",
                                             right_on="onset", by=['package', 'patient'], direction='forward')
+
+    @staticmethod
+    def parse_datetime_interval(interval_str: str, pattern=None) -> Interval:
+        """
+        parses an interval time stamp
+        Args:
+            interval_str:
+            pattern:
+
+        Returns: Interval with the resolved end points
+
+        """
+        if pattern is None:
+            pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
+            # pattern = r"Timestamp\('.{3,30}'\)"
+
+        def converter(val):
+            # noinspection PyUnresolvedReferences
+            # from pandas import Timestamp
+            import datetime
+            return eval(val)
+
+        interval = portion.from_string(interval_str, conv=converter, bound=pattern)
+        return interval
 
     @classmethod
     def generate_dataset(cls, patient_name, selected_func, fast_dev_mode: bool = False,
@@ -632,7 +656,7 @@ class PSPDataset(predictionDataset):
         print("starting to process raw files")
         # initialize samples_df
         samples_df = pd.DataFrame(
-            columns=['patient_name', 'window_interval', 'window_id', 'fname', 'label', 'label_desc'])
+            columns=['patient_name', 'interval', 'window_id', 'fname', 'label', 'label_desc'])
         counter = itertools.count()
         for window_idx, sample_row in intervals_and_raws.dropna().iterrows():
             # create samples_df row
@@ -647,7 +671,7 @@ class PSPDataset(predictionDataset):
             # append row to samples_df
 
             row = {"patient_name": sample_row.patient_name,
-                   "window_interval": sample_row.window_interval,
+                   "interval": sample_row.window_interval,
                    "window_id": window_id,
                    "fname": fname,
                    "label": y,

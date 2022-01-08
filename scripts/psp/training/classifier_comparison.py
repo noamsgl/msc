@@ -34,7 +34,6 @@ def main(save_to_disk=True, feature_names=('max_cross_corr', 'phase_lock_val', '
             "Nearest Neighbors",
             "Linear SVM",
             "RBF SVM",
-            # "Gaussian Process",
             "Decision Tree",
             "Random Forest",
             "Neural Net",
