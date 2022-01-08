@@ -4,7 +4,6 @@ from typing import List
 import pandas as pd
 import portion as P
 from pandas import DataFrame
-from portion import Interval
 
 from msc.config import get_config
 
@@ -34,13 +33,12 @@ def get_recording_end(patient: str) -> datetime:
     """
     Get last measurement timestamp for the patient from data_index.csv
     Args:
-        package:
         patient:
 
     Returns:
 
     """
-    data_index_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/data_index.csv"
+    data_index_path = f"{config['PATH'][config['INDEX_MACHINE']]['RAW_DATASET']}/data_index.csv"
     data_index_df = pd.read_csv(data_index_path, parse_dates=['meas_date', 'end_date'])
 
     patient_data_df = data_index_df.loc[data_index_df['patient'] == patient]
@@ -48,15 +46,12 @@ def get_recording_end(patient: str) -> datetime:
     return max(patient_data_df.end_date)
 
 
-def get_interictal_intervals(patient_name: str) -> List[Interval]:
+def get_interictal_intervals(patient_name: str) -> DataFrame:
     """
     return interictal time intervals
 
-    example: get_preictal_intervals("surfCO", "pat_4000") -> interictals=[(Timestamp('2010-03-01 10:25:24'),Timestamp('2010-03-01 19:34:12')), (Timestamp('2010-03-01 23:34:12'),Timestamp('2010-03-02 04:13:38')), (Timestamp('2010-03-02 08:13:38'),Timestamp('2010-03-02 10:18:45')), (Timestamp('2010-03-02 14:18:45'),Timestamp('2010-03-02 15:27:23')), (Timestamp('2010-03-02 19:27:23'),Timestamp('2010-03-02 23:07:14')), (), (Timestamp('2010-03-03 04:10:30'),Timestamp('2010-03-04 09:07:01'))]
-
     Args:
-        package: | example "surfCO"
-        patient: | example "pat_4000"
+        patient_name: | example "pat_4000"
 
     Returns:
 
@@ -78,10 +73,8 @@ def get_preictal_intervals(patient_name: str) -> DataFrame:
     """
     return preictal time intervals
 
-    example: get_preictal_intervals("surfCO", "pat_4000") -> preictals=[(Timestamp('2010-03-01 20:34:12'), Timestamp('2010-03-01 21:34:12')), (Timestamp('2010-03-02 05:13:38'), Timestamp('2010-03-02 06:13:38')), (Timestamp('2010-03-02 11:18:45'), Timestamp('2010-03-02 12:18:45')), (Timestamp('2010-03-02 16:27:23'), Timestamp('2010-03-02 17:27:23')), (Timestamp('2010-03-03 00:07:14'), Timestamp('2010-03-03 01:07:14')), (Timestamp('2010-03-03 01:10:30'), Timestamp('2010-03-03 02:10:30'))]
     Args:
-        package: | example "surfCO"
-        patient: | example "pat_4000"
+        patient_name: | example "pat_4000"
 
     Returns:
 
@@ -90,16 +83,6 @@ def get_preictal_intervals(patient_name: str) -> DataFrame:
     preictals = [P.open(onset - timedelta(hours=float(config['TASK']['PREICTAL_MIN_DIFF_HOURS'])), onset) for onset in
                  onsets]
     return DataFrame({"interval": preictals, "label_desc": "preictal"})
-
-
-def get_ictal_intervals(seizures_index_df: DataFrame):
-    """Get the ictal (seizure) intervals from the seizures_index_df
-    # todo: implement this
-    """
-
-
-
-    raise NotImplementedError()
 
 
 def get_seiz_onsets(patient_name: str) -> List[datetime]:
@@ -113,7 +96,7 @@ def get_seiz_onsets(patient_name: str) -> List[datetime]:
     Returns:
 
     """
-    seizures_index_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}/seizures_index.csv"
+    seizures_index_path = f"{config['PATH'][config['INDEX_MACHINE']]['RAW_DATASET']}/seizures_index.csv"
 
     seizures_index_df = pd.read_csv(seizures_index_path, parse_dates=['onset', 'offset'])
 
