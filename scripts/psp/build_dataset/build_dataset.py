@@ -18,6 +18,7 @@ import os.path
 
 from msc.config import get_config
 from msc.data_utils import get_time_as_str, PicksOptions
+from msc.dataset import PSPDataset
 
 
 def main(raw_args=None):
@@ -62,9 +63,8 @@ def main(raw_args=None):
         for patient in patients:
             # get package
             picks = PicksOptions.common_channels
-            # picks = None
-            # save_dataset_to_disk(patient, picks, selected_func, dataset_timestamp, config, fast_dev_mode=fast_dev_mode)
-            raise NotImplementedError("need to generate dataset here")
+            PSPDataset.generate_dataset(patient, selected_func, picks=picks, fast_dev_mode=False)
+
 
 if __name__ == '__main__':
     main()

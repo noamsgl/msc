@@ -18,7 +18,7 @@ from portion import Interval
 from sklearn.base import BaseEstimator, TransformerMixin
 from tqdm import tqdm
 
-from msc import config, get_data_index_df
+from msc import config
 
 mne.set_log_level(False)
 
@@ -248,6 +248,7 @@ def add_raws_to_intervals_df(intervals_df: DataFrame, picks, fast_dev_mode=False
     """
     fast_dev_counter = itertools.count()
 
+    from msc.dataset import get_data_index_df
     data_index_df = get_data_index_df()
     dataset_path = f"{config['PATH'][config['RAW_MACHINE']]['RAW_DATASET']}"
 
@@ -362,7 +363,6 @@ def get_recording_start(patient: str) -> datetime:
 
     """
     from msc.dataset import get_data_index_df
-
     data_index_df = get_data_index_df()
 
     patient_data_df = data_index_df.loc[data_index_df['patient'] == patient]

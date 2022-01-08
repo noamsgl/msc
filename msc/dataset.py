@@ -16,13 +16,14 @@ from pandas import DataFrame, Series
 from portion import Interval
 from torch import Tensor
 
-import msc.data_utils as data_utils
 from msc import config
 
 
 # from msc.data_utils import get_preictal_intervals, get_interictal_intervals
 # from msc.data_utils.features import extract_feature_from_numpy
 # from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
+from msc.data_utils import PicksOptions, get_time_as_str, add_raws_to_intervals_df, get_preictal_intervals, \
+    get_interictal_intervals, extract_feature_from_numpy
 
 
 def static_vars(**kwargs):
@@ -168,7 +169,7 @@ class baseDataset:
 
     def __init__(self, dataset_dir, fast_dev_mode: bool = False):
         self.dataset_dir = dataset
-        self.create_time = data_utils.get_time_as_str()
+        self.create_time = get_time_as_str()
         self.fast_dev_mode = fast_dev_mode
         if self.fast_dev_mode:
             print(f"WARNING! {self.fast_dev_mode=} !!! Results are incomplete.")
@@ -330,7 +331,7 @@ class SeizuresDataset(RawDataset):
 
     @classmethod
     def generate_dataset(cls, seizures_index_df: DataFrame, fast_dev_mode: bool = False,
-                         picks: Sequence[str] = data_utils.PicksOptions.common_channels, output_dir: str = None,
+                         picks: Sequence[str] = PicksOptions.common_channels, output_dir: str = None,
                          time_minutes_before=0, time_minutes_after=0):
         """
         Gets the seizure intervals,
@@ -338,7 +339,7 @@ class SeizuresDataset(RawDataset):
         Returns:
 
         """
-        create_time = data_utils.get_time_as_str()
+        create_time = get_time_as_str()
         if output_dir is None:
             # noinspection PyTypeChecker
             output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/SEIZURES/{create_time}"
@@ -373,7 +374,7 @@ class SeizuresDataset(RawDataset):
         print("starting to load raw files")
         # load Raws
 
-        intervals_and_raws: DataFrame = data_utils.add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
+        intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
 
         print("starting to process raw files")
         counter = itertools.count()
@@ -449,14 +450,14 @@ class UniformDataset(RawDataset):
 
     @classmethod
     def generate_dataset(cls, N=1000, L=1000, fast_dev_mode: bool = False,
-                         picks: Sequence[str] = data_utils.PicksOptions.common_channels, output_dir: str = None):
+                         picks: Sequence[str] = PicksOptions.common_channels, output_dir: str = None):
         """
         Gets the seizure intervals,
         Iterates over the data files
         Returns:
 
         """
-        create_time = data_utils.get_time_as_str()
+        create_time = get_time_as_str()
         if output_dir is None:
             # noinspection PyTypeChecker
             output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/UNIFORM/{create_time}"
@@ -477,7 +478,7 @@ class UniformDataset(RawDataset):
 
         # load Raws
         print("starting to load raw files")
-        intervals_and_raws: DataFrame = data_utils.add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
+        intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
 
         print("starting to process raw files")
         # initialize samples_df
@@ -589,7 +590,7 @@ class PSPDataset(predictionDataset):
 
     @classmethod
     def generate_dataset(cls, patient_name, selected_func, fast_dev_mode: bool = False,
-                         picks: Sequence[str] = data_utils.PicksOptions.common_channels, output_dir: str = None):
+                         picks: Sequence[str] = PicksOptions.common_channels, output_dir: str = None):
         """
         Gets the seizure intervals,
         Iterates over the data files
@@ -599,7 +600,7 @@ class PSPDataset(predictionDataset):
         if fast_dev_mode:
             print(f"WARNING! {fast_dev_mode=} !!! Results are incomplete.")
 
-        create_time = data_utils.get_time_as_str()
+        create_time = get_time_as_str()
         if output_dir is None:
             # noinspection PyTypeChecker
             output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/{selected_func}/{patient_name}/{create_time}"
@@ -618,8 +619,8 @@ class PSPDataset(predictionDataset):
             yaml.dump(metadata, metadata_file, default_flow_style=False)
 
         # get intervals
-        preictal_intervals = data_utils.get_preictal_intervals(patient_name)
-        interictal_intervals = data_utils.get_interictal_intervals(patient_name)
+        preictal_intervals = get_preictal_intervals(patient_name)
+        interictal_intervals = get_interictal_intervals(patient_name)
 
         intervals = pd.concat([preictal_intervals, interictal_intervals])
 
@@ -627,7 +628,7 @@ class PSPDataset(predictionDataset):
         window_intervals['patient_name'] = patient_name
         print("starting to load raw files")
         # load Raws
-        intervals_and_raws: DataFrame = data_utils.add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
+        intervals_and_raws: DataFrame = add_raws_to_intervals_df(window_intervals, picks, fast_dev_mode)
 
         print("starting to process raw files")
         # initialize samples_df
@@ -659,7 +660,7 @@ class PSPDataset(predictionDataset):
             X = StandardScaler().fit_transform(X)
 
             # Perform Feature Extraction (Optional)
-            X = data_utils.extract_feature_from_numpy(X, selected_func, float(config['TASK']['RESAMPLE']))
+            X = extract_feature_from_numpy(X, selected_func, float(config['TASK']['RESAMPLE']))
 
             # Dump to file
             print(f"dumping {window_id=} to {fname=}")
