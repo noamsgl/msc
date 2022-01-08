@@ -63,7 +63,8 @@ def main(raw_args=None):
         for patient in patients:
             # get package
             picks = PicksOptions.common_channels
-            PSPDataset.generate_dataset(patient, selected_func, picks=picks, fast_dev_mode=False)
+            PSPDataset.generate_dataset(patient, selected_func, picks=picks, fast_dev_mode=fast_dev_mode)
+
 
 
 if __name__ == '__main__':

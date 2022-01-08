@@ -15,10 +15,9 @@ from numpy import ndarray
 from pandas import DataFrame, Series
 from portion import Interval
 from torch import Tensor
+from tqdm import tqdm
 
 from msc import config
-
-
 # from msc.data_utils import get_preictal_intervals, get_interictal_intervals
 # from msc.data_utils.features import extract_feature_from_numpy
 # from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
@@ -167,8 +166,11 @@ class baseDataset:
     The dataset base class
     """
 
-    def __init__(self, dataset_dir, fast_dev_mode: bool = False):
-        self.dataset_dir = dataset
+    def __init__(self, dataset_dir: str, fast_dev_mode: bool = False):
+        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
+        assert os.path.isfile(f"{dataset_dir}/dataset.csv"), "error: dataset.csv file not found"
+        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
+        self.dataset_dir = dataset_dir
         self.create_time = get_time_as_str()
         self.fast_dev_mode = fast_dev_mode
         if self.fast_dev_mode:
@@ -556,11 +558,7 @@ class PSPDataset(predictionDataset):
         Args:
             dataset_dir:
         """
-        super().__init__()
-        self.dataset_dir = dataset_dir
-        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
-        assert os.path.isfile(f"{dataset_dir}/dataset.csv"), "error: dataset.csv file not found"
-        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
+        baseDataset.__init__(self, dataset_dir)
 
         windows_dict = {window_id: x for window_id, x in self.file_loader(dataset_dir)}
         self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name].reshape(-1), axis=1)
@@ -603,6 +601,7 @@ class PSPDataset(predictionDataset):
         create_time = get_time_as_str()
         if output_dir is None:
             # noinspection PyTypeChecker
+            # output_dir will be the dataset_dir after generating is complete
             output_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['RESULTS']}/{config['DATASET']}/{selected_func}/{patient_name}/{create_time}"
 
         print(f"Creating Output Directory {output_dir}")
@@ -638,6 +637,10 @@ class PSPDataset(predictionDataset):
         for window_idx, sample_row in intervals_and_raws.dropna().iterrows():
             # create samples_df row
             window_id = next(counter)
+
+            if fast_dev_mode and window_id > 2:
+                break
+
             fname = f"{output_dir}/window_{window_id}.pkl"
 
             y = config['TASK'][f"{sample_row['label_desc'].upper()}_LABEL"]
@@ -669,7 +672,65 @@ class PSPDataset(predictionDataset):
         samples_df_path = f"{output_dir}/dataset.csv"
         print(f"saving samples_df to {samples_df_path=}")
         samples_df.to_csv(samples_df_path)
+
+        cls.imshow_dataset(output_dir, patient_name, selected_func)
+
         return cls(output_dir)
+
+    @classmethod
+    def save_pattern_plot(cls, X: ndarray, patient_name: str, feature_name: str, window_name: str, output_path: str):
+        """
+        Saves to disk a plot of a single feature pattern
+        Args:
+            X:
+            patient_name:
+            feature_name:
+            window_name:
+            output_path:
+
+        Returns:
+
+        """
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+        plt.clf()
+        plt.title(f"{feature_name}\nfor {patient_name}, {window_name}")
+        ax = plt.subplot()
+        im = ax.imshow(X)
+        plt.xlabel('time (5 s frames)')
+        plt.ylabel('index of channel pair')
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        plt.savefig(output_path)
+
+    @classmethod
+    def imshow_dataset(cls, dataset_path: str, patient_name: str, feature_name: str):
+        """
+        Converts windows to plots on disk for entire dataset
+        Args:
+            dataset_path:
+            patient_name:
+            feature_name:
+
+        Returns:
+
+        """
+        images_dir = f"{dataset_path}/images/"
+        print(f"generating images in {images_dir}")
+        os.makedirs(images_dir, exist_ok=True)
+        for root, dirs, files in os.walk(dataset_path):
+            for name in tqdm(files, desc="saving images to disk"):
+                if os.path.splitext(name)[1] == ".pkl":
+                    file_path = os.path.join(root, name)
+                    X = pickle.load(open(file_path, 'rb'))
+                    window_ids = re.findall('[0-9]+', name)
+                    assert len(window_ids) == 1, "error: found more than one window id"
+                    window_id = int(window_ids[0])
+                    output_path = f"{dataset_path}/images/window_{window_id}.png"
+                    cls.save_pattern_plot(X, patient_name, feature_name, f"w_{window_id}", output_path)
+        return
 
     def get_X(self):
         return np.vstack(self.samples_df.x)
