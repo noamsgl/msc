@@ -598,7 +598,7 @@ class PSPDataset(predictionDataset):
 
         """
         if pattern is None:
-            pattern = r"datetime\.datetime\(\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\)"
+            pattern = r"datetime.datetime\([\d, ]{3,30}\)"
             # pattern = r"Timestamp\('.{3,30}'\)"
 
         def converter(val):

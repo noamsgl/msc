@@ -62,5 +62,6 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     # ax = plt.axis()
+    raise NotImplementedError("needs refactoring")
     plot_pca_projection(data_dir)
     plt.show()
