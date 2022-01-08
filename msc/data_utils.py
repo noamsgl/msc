@@ -1,6 +1,3 @@
-import mne_features
-import portion as P
-
 import itertools
 import os
 import sys
@@ -9,17 +6,19 @@ from datetime import timedelta, datetime
 from typing import Tuple, Union, Sequence, List
 
 import mne
+import mne_features
 import numpy as np
 import pandas as pd
 import portion
+import portion as P
 from mne.io import Raw
 from numpy import ndarray
 from pandas import Series, DataFrame
 from portion import Interval
+from sklearn.base import BaseEstimator, TransformerMixin
 from tqdm import tqdm
 
 from msc import config, get_data_index_df
-from sklearn.base import BaseEstimator, TransformerMixin
 
 mne.set_log_level(False)
 
@@ -443,6 +442,7 @@ def get_seiz_onsets(patient_name: str) -> List[datetime]:
     patient_seizures_df = seizures_index_df.loc[seizures_index_df['patient'] == patient_name]
 
     return list(patient_seizures_df.onset)
+
 
 def standardize(X: ndarray) -> ndarray:
     """
