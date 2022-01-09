@@ -429,8 +429,6 @@ class SeizuresDataset(RawDataset):
         return cls(output_dir)
 
 
-
-
 class UniformDataset(RawDataset):
     """
     A class for a dataset composed of seizures only.
