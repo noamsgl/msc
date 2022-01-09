@@ -282,6 +282,16 @@ class RawDataset(baseDataset):
 
     @torch.no_grad()
     def get_train_y(self, num_channels: int = 2, crop: float = 400, normalize=True) -> Tensor:
+        """
+        return the data
+        Args:
+            num_channels:
+            crop:
+            normalize:
+
+        Returns:
+
+        """
         if not self.data_loaded:
             print("loading data")
             self._load_data()
@@ -302,7 +312,7 @@ class RawDataset(baseDataset):
             # m = nn.BatchNorm1d(num_features=num_channels, dtype=torch.double)
             # train_y = m(train_y.double())
 
-        return train_y
+        return train_y.float()
 
 
 class SeizuresDataset(RawDataset):
@@ -320,9 +330,7 @@ class SeizuresDataset(RawDataset):
             preload_data:
         """
         super().__init__(dataset_dir)
-        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
-        assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
-        self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
+        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
         self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
         self.dataset_dir = dataset_dir
         self.data_loaded = False
@@ -415,10 +423,12 @@ class SeizuresDataset(RawDataset):
             print(f"dumping {window_id=} to {fname=}")
             pickle.dump(X, open(fname, 'wb'))
 
-        samples_df_path = f"{output_dir}/samples_df.csv"
+        samples_df_path = f"{output_dir}/dataset.csv"
         print(f"saving samples_df to {samples_df_path=}")
         samples_df.to_csv(samples_df_path)
         return cls(output_dir)
+
+
 
 
 class UniformDataset(RawDataset):
@@ -437,10 +447,7 @@ class UniformDataset(RawDataset):
             add_check_isseizure:
         """
         super().__init__(dataset_dir)
-        assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
-        assert os.path.isfile(f"{dataset_dir}/samples_df.csv"), "error: samples_df.csv not found in dataset_dir"
-
-        self.samples_df = pd.read_csv(f"{dataset_dir}/samples_df.csv", index_col=0)
+        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
 
         # self.samples_df = self.samples_df.set_index(['window_id'])
         self.dataset_dir = dataset_dir
@@ -516,7 +523,7 @@ class UniformDataset(RawDataset):
             print(f"dumping {window_id=} to {fname=}")
             pickle.dump(X, open(fname, 'wb'))
 
-        samples_df_path = f"{output_dir}/samples_df.csv"
+        samples_df_path = f"{output_dir}/dataset.csv"
         print(f"saving samples_df to {samples_df_path=}")
         samples_df.to_csv(samples_df_path)
         return cls(output_dir)
