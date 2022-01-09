@@ -4,7 +4,7 @@ from numpy import ndarray
 from pandas import DataFrame
 from pandas._testing import assert_frame_equal
 
-from msc.dataset.dataset import get_datasets_df, PSPDataset
+from msc.dataset import get_datasets_df, PSPDataset
 
 
 def plot_pattern_window(x: ndarray, feature_name: str, patient_name: str, window_name: str, label_desc: str, ax=None):
@@ -24,11 +24,10 @@ def plot_preictal_and_interictal_windows(preictal_row: DataFrame, interictal_row
     """
     Saves to disk a plot of a single feature pattern
     Args:
-        X:
-        patient_name:
+        preictal_row:
+        interictal_row:
         feature_name:
-        window_name:
-        output_path:
+        patient_name:
 
     Returns:
 

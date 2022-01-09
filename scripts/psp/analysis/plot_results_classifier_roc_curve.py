@@ -5,7 +5,7 @@ from sklearn.metrics import RocCurveDisplay, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
-from msc.dataset.dataset import get_datasets_df, PSPDataset
+from msc.dataset import get_datasets_df, PSPDataset
 
 
 def plot_classifier_roc_curve_and_confusion_matrix(selected_patient, selected_feature, selected_classifier):

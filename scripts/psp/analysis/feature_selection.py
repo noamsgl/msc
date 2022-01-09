@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split, cross_validate
 
 from msc.config import get_config
 from msc.dataset import PSPDataset
-from msc.dataset.dataset import get_datasets_df, MaskedDataset
+from msc.dataset import get_datasets_df, MaskedDataset
 
 
 def plot_feature_selection_mask(selector, patient_name, feature_name, classifier_name, ax):

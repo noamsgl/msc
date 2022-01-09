@@ -21,7 +21,7 @@ tqdm = "*"
 # pyro
 # tvb-library
 # pyqt5
-#gpytorch = "*"
+gpytorch = "*"
 gitpython = "*"
 #nitime = "*"
 #pyqt5 = "*"

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 from msc.dataset import PSPDataset
-from msc.dataset.dataset import get_datasets_df
+from msc.dataset import get_datasets_df
 from scripts.psp.analysis.plot_feature_window import plot_feature_window
 
 

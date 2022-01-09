@@ -22,4 +22,4 @@ def plot_feature_window(X: ndarray, patient_name: str, feature_name: str, window
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
-    return None
+    return ax

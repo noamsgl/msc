@@ -1,4 +1,5 @@
 ---
+CI: TRUE
 PATH:
   LOCAL:
     RAW_DATASET: C:\raw_data\epilepsiae
@@ -11,16 +12,15 @@ PATH:
     RESULTS: /cs_storage/noamsi/results/
     PSP_DATASET: /cs_storage/noamsi/results/epilepsiae/
 
-
   MIRIAM:
     RAW_DATASET: \\132.72.65.115\epilepsy_data\Epilepsiea\raw_data
 
 
 TASK:
   PICKS: "one_channel"
-  RESAMPLE: "256"
-  PREICTAL_MIN_DIFF_HOURS: "1"
-  INTERICTAL_MIN_DIFF_HOURS: "4"
+  RESAMPLE: 256
+  PREICTAL_MIN_DIFF_HOURS: 1
+  INTERICTAL_MIN_DIFF_HOURS: 4
   INTERICTAL_LABEL: "0"
   PREICTAL_LABEL: "1"
   ICTAL_LABEL: "2"
@@ -33,5 +33,6 @@ RESULTS:
     RESULTS_DIR: "/cs_storage/noamsi/results"
 
 DATASET: epilepsiae
+INDEX_MACHINE: LOCAL
 RAW_MACHINE: MIRIAM
 RESULTS_MACHINE: LOCAL

@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from msc.dataset.dataset import get_seizures_index_df
+from msc.dataset import get_seizures_index_df
 
 
 def plot_seizure_count_histogram(seizures_index_df, ax=None):
