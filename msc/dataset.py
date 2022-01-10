@@ -496,7 +496,7 @@ class UniformDataset(baseDataset):
         print("starting to process raw files")
         # initialize samples_df
         samples_df = pd.DataFrame(
-            columns=['patient_name', 'window_interval', 'window_id', 'fname', 'label', 'label_desc'])
+            columns=['window_interval', 'window_id', 'fname'])
         counter = itertools.count()
         for window_idx, sample_row in intervals_and_raws.dropna().iterrows():
             # create samples_df row
