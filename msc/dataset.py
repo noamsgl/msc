@@ -52,6 +52,9 @@ def get_data_index_df():
         try:
             get_data_index_df.data_index_df = pd.read_csv(data_index_fpath, index_col=0,
                                                           parse_dates=['meas_date', 'end_date'])
+            get_data_index_df.data_index_df['interval'] = get_data_index_df.data_index_df.apply(
+                lambda row: portion.closedopen(row['meas_date'], row['end_date']), axis=1)
+
         except FileNotFoundError as e:
             print(f"file {data_index_fpath} not found: check the config file")
             raise e
@@ -167,7 +170,8 @@ class baseDataset:
     """
 
     def __init__(self, dataset_dir: str, fast_dev_mode: bool = False, preload_data=True):
-        if self.fast_dev_mode:
+        self.fast_dev_mode = fast_dev_mode
+        if fast_dev_mode:
             print(f"WARNING! {self.fast_dev_mode=} !!! Results are incomplete.")
 
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
@@ -190,6 +194,8 @@ class baseDataset:
         self.samples_df['window_interval'] = self.samples_df['window_interval'].apply(self.parse_datetime_interval)
         self.samples_df['lower'] = self.samples_df['window_interval'].apply(lambda i: i.lower)
         self.samples_df['upper'] = self.samples_df['window_interval'].apply(lambda i: i.upper)
+
+        self.data_loaded = False
 
         if preload_data:
             self._load_data()
@@ -229,6 +235,7 @@ class baseDataset:
                 yield window_id, x
 
     def _load_data(self):
+        assert not self.data_loaded, "error: trying to load data when already loaded."
         try:
             print("loading")
             windows_dict = {window_id: x for window_id, x in self.file_loader(self.dataset_dir)}
@@ -237,9 +244,9 @@ class baseDataset:
             self.data_loaded = True
             # todo: fix this for SeizuresDataset
             # self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
-        # self.labels = list(self.samples_df.label)
+            # self.labels = list(self.samples_df.label)
         except Exception as e:
-            raise e
+            raise RuntimeError(f"Was unable to load samples from {self.file_loader=}, check the dataset") from e
 
     def get_X(self):
         return np.vstack(self.samples_df.x)
@@ -446,12 +453,13 @@ class UniformDataset(baseDataset):
         super().__init__(dataset_dir=dataset_dir, preload_data=preload_data)
 
         # self.samples_df = self.samples_df.set_index(['window_id'])
-        self.dataset_dir = dataset_dir
-        self.data_loaded = False
         self.num_channels = num_channels
 
-        # if add_data_index:
+        if add_check_isseizure:
+            self.add_check_isseizure()
 
+        if add_data_index:
+            self.add_data_index_info()
 
     @classmethod
     def generate_dataset(cls, N=1000, L=1000, fast_dev_mode: bool = False,
@@ -524,18 +532,50 @@ class UniformDataset(baseDataset):
         samples_df.to_csv(samples_df_path)
         return cls(output_dir)
 
-    def add_check_isseizure(self):
+    def add_check_isseizure(self) -> None:
+        """
+        adds an 'isseizure' column to samples_df
+        Returns:
+
+        """
         seizures_index_df = get_seizures_index_df()
 
         def check_isseizure(samples_row) -> bool:
             patient = samples_row['patient']
-            interval = samples_row['interval']
+            interval = samples_row['window_interval']
             patient_seizures = seizures_index_df.loc[patient]
             patient_seizures['overlaps_interval'] = patient_seizures.interval.apply(
                 lambda p_interval: p_interval.overlaps(interval))
             return patient_seizures['overlaps_interval'].any()
 
         self.samples_df['isseizure'] = self.samples_df.apply(check_isseizure, axis=1)
+
+    def add_data_index_info(self) -> None:
+        """
+        Merges (hardcoded: ch_names, lowpass) from data_index_df to self.samples_df on enveloping data file.
+        Assumes only one data file envelopes each seizure.
+        Returns:
+
+        """
+        data_index_df = get_data_index_df()
+        data_index_df = data_index_df.set_index('patient')
+
+        def get_data_fname(samples_row) -> str:
+            patient = samples_row['patient']
+            interval = samples_row['window_interval']
+            patient_data_files = data_index_df.loc[patient]
+            patient_data_files['envelopes_interval'] = patient_data_files.interval.apply(
+                lambda p_interval: p_interval.overlaps(interval)
+            )
+            assert patient_data_files.envelopes_interval.sum() == 1, f"error: more than one datafile envelops the interval {interval}"
+            return patient_data_files[patient_data_files.envelopes_interval].iloc[0].fname
+
+        self.samples_df['fname'] = self.samples_df.apply(get_data_fname, axis=1)
+
+        cols_to_use = ['fname'] + ['ch_names', 'lowpass']  # key + columns
+
+        self.samples_df = pd.merge(self.samples_df, data_index_df[cols_to_use], on='fname', how='outer')
+        return None
 
 
 class PSPDataset(baseDataset):
