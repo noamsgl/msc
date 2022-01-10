@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
     fig, axes = plt.subplots(1, 3, figsize=(13.33, 7.5), dpi=180, sharex=True, sharey=True)
     cbar_ax = fig.add_axes([.91, .28, .03, .6])
-    fig.suptitle("Training Time", fontsize=21)
+    fig.suptitle("Mean ROC AUC ", fontsize=21)
     # fig.text(0.5, 0.04, 'Feature', ha='center')
     # fig.text(0.04, 0.5, 'Classifier', va='center', rotation='vertical')
     for i, ax in enumerate(axes.flat):

@@ -166,15 +166,33 @@ class baseDataset:
     The dataset base class
     """
 
-    def __init__(self, dataset_dir: str, fast_dev_mode: bool = False):
+    def __init__(self, dataset_dir: str, fast_dev_mode: bool = False, preload_data=True):
+        if self.fast_dev_mode:
+            print(f"WARNING! {self.fast_dev_mode=} !!! Results are incomplete.")
+
         assert os.path.exists(dataset_dir), "error: the dataset directory does not exist"
         assert os.path.isfile(f"{dataset_dir}/dataset.csv"), "error: dataset.csv file not found"
-        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
+        assert os.path.isfile(f"{dataset_dir}/dataset.yml"), "error: dataset.yml not found in dataset_dir"
+        with open(f"{dataset_dir}/dataset.yml", "r") as metadata_stream:
+            try:
+                self.metadata = yaml.load(metadata_stream, Loader=yaml.FullLoader)
+            except yaml.YAMLError as exc:
+                print("problem loading dataset.yml")
+                raise exc
+
         self.dataset_dir = dataset_dir
         self.create_time = get_time_as_str()
         self.fast_dev_mode = fast_dev_mode
-        if self.fast_dev_mode:
-            print(f"WARNING! {self.fast_dev_mode=} !!! Results are incomplete.")
+
+        # load and parse samples_df
+        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
+        self.samples_df = self.samples_df.reset_index()  # todo: check if can remove
+        self.samples_df['window_interval'] = self.samples_df['window_interval'].apply(self.parse_datetime_interval)
+        self.samples_df['lower'] = self.samples_df['window_interval'].apply(lambda i: i.lower)
+        self.samples_df['upper'] = self.samples_df['window_interval'].apply(lambda i: i.upper)
+
+        if preload_data:
+            self._load_data()
 
     @staticmethod
     def parse_datetime_interval(interval_str: str, pattern=None) -> Interval:
@@ -210,31 +228,11 @@ class baseDataset:
                 assert isinstance(x, ndarray), "error: the file loaded is not a numpy array"
                 yield window_id, x
 
-
-class RawDataset(baseDataset):
-    """
-    The base class for datasets without labels.
-    """
-
-    def __init__(self, dataset_dir):
-        super().__init__(dataset_dir)
-        assert os.path.isfile(f"{dataset_dir}/dataset.yml"), "error: dataset.yml not found in dataset_dir"
-        with open(f"{dataset_dir}/dataset.yml", "r") as metadata_stream:
-            try:
-                self.metadata = yaml.load(metadata_stream, Loader=yaml.FullLoader)
-            except yaml.YAMLError as exc:
-                print("problem loading dataset.yml")
-                raise exc
-
     def _load_data(self):
         try:
             print("loading")
-            self.samples_df = self.samples_df.reset_index()
             windows_dict = {window_id: x for window_id, x in self.file_loader(self.dataset_dir)}
             self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name], axis=1)
-            self.samples_df['interval'] = self.samples_df['window_interval'].apply(self.parse_datetime_interval)
-            self.samples_df['lower'] = self.samples_df['interval'].apply(lambda i: i.lower)
-            self.samples_df['upper'] = self.samples_df['interval'].apply(lambda i: i.upper)
             print("done loading")
             self.data_loaded = True
             # todo: fix this for SeizuresDataset
@@ -315,7 +313,7 @@ class RawDataset(baseDataset):
         return train_y.float()
 
 
-class SeizuresDataset(RawDataset):
+class SeizuresDataset(baseDataset):
     """
     A class for a dataset composed of seizures only.
     Regular instantiation (__init__()) can be used for loading an existing dataset.
@@ -429,14 +427,15 @@ class SeizuresDataset(RawDataset):
         return cls(output_dir)
 
 
-class UniformDataset(RawDataset):
+class UniformDataset(baseDataset):
     """
     A class for a dataset composed of seizures only.
     Regular instantiation (__init__()) can be used for loading an existing dataset.
     @classmethod generate_dataset() can be used to generate one from scratch.
     """
 
-    def __init__(self, dataset_dir: str, num_channels=2, preload_data=True, add_check_isseizure=True):
+    def __init__(self, dataset_dir: str, num_channels=2, preload_data=True, add_check_isseizure=True,
+                 add_data_index=True):
         """
         Args:
             dataset_dir:
@@ -444,16 +443,15 @@ class UniformDataset(RawDataset):
             preload_data:
             add_check_isseizure:
         """
-        super().__init__(dataset_dir)
-        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
+        super().__init__(dataset_dir=dataset_dir, preload_data=preload_data)
 
         # self.samples_df = self.samples_df.set_index(['window_id'])
         self.dataset_dir = dataset_dir
         self.data_loaded = False
         self.num_channels = num_channels
 
-        if preload_data:
-            self._load_data()
+        # if add_data_index:
+
 
     @classmethod
     def generate_dataset(cls, N=1000, L=1000, fast_dev_mode: bool = False,
@@ -540,16 +538,7 @@ class UniformDataset(RawDataset):
         self.samples_df['isseizure'] = self.samples_df.apply(check_isseizure, axis=1)
 
 
-class predictionDataset(baseDataset):
-    """
-    The base class for prediction datasets (allows option to add detectionDataset in the future).
-    """
-
-    def __init__(self):
-        super().__init__()
-
-
-class PSPDataset(predictionDataset):
+class PSPDataset(baseDataset):
     """
     A class for Physiological Signal Processing Course Datasets
     It is fit for a pattern dataset of pickled numpy arrays representing time windows,
