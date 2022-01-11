@@ -239,12 +239,13 @@ class baseDataset:
         try:
             print("loading")
             windows_dict = {window_id: x for window_id, x in self.file_loader(self.dataset_dir)}
-            self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.name], axis=1)
+            self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.window_id], axis=1)
             print("done loading")
             self.data_loaded = True
             # todo: fix this for SeizuresDataset
             # self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
-            # self.labels = list(self.samples_df.label)
+            # self.labels = list(self.samples_df.label)a
+            assert self.data_loaded, "error: exit condition not met"
         except Exception as e:
             raise RuntimeError(f"Was unable to load samples from {self.file_loader=}, check the dataset") from e
 
@@ -262,17 +263,16 @@ class baseDataset:
     @property
     def T_max(self):
         def get_interval_length(interval: Interval):
-            assert isinstance(interval, Interval), "Error: interval is not of type Interval"
+            assert isinstance(interval, Interval), f"Error: interval is not of type Interval ({interval=}, {type(interval)=})"
             return (interval.upper - interval.lower).total_seconds()
-
-        return self.samples_df.interval.apply(get_interval_length).max()
+        return self.samples_df.window_interval.apply(get_interval_length).max()
 
     def get_train_x(self, crop_seconds: float = 400) -> Tensor:
         """
-        return the time axis
-        Args:
+        return the time axis, cropped to crop_seconds with help of sfreq and T_max
+        Args: crop_seconds
 
-        Returns:
+        Returns: train_x
 
         """
         if not self.data_loaded:
@@ -280,10 +280,9 @@ class baseDataset:
             self._load_data()
 
         sfreq = self.metadata.get('sfreq')
-        T = self.T_max
-        N = sfreq * T
+        N = sfreq * self.T_max
         crop_idx = int(sfreq * crop_seconds)
-        return torch.linspace(0, T, int(N))[:crop_idx]
+        return torch.linspace(0, self.T_max, int(N))[:crop_idx]
 
     @torch.no_grad()
     def get_train_y(self, num_channels: int = 2, crop_seconds: float = 400, normalize=True, delay_seconds=0) -> Tensor:
@@ -340,15 +339,10 @@ class SeizuresDataset(baseDataset):
             num_channels:
             preload_data:
         """
-        super().__init__(dataset_dir)
-        self.samples_df = pd.read_csv(f"{dataset_dir}/dataset.csv", index_col=0)
+        super().__init__(dataset_dir=dataset_dir, preload_data=preload_data)
         self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
         self.dataset_dir = dataset_dir
-        self.data_loaded = False
         self.num_channels = num_channels
-
-        if preload_data:
-            self._load_data()
 
     @classmethod
     def generate_dataset(cls, seizures_index_df: DataFrame, fast_dev_mode: bool = False,
@@ -580,7 +574,7 @@ class UniformDataset(baseDataset):
 
         cols_to_use = ['fname'] + ['ch_names', 'lowpass']  # key + columns
 
-        self.samples_df = pd.merge(self.samples_df, data_index_df[cols_to_use], on='fname', how='outer')
+        self.samples_df = pd.merge(self.samples_df, data_index_df[cols_to_use], on='fname', how='outer').dropna(subset=['window_id'])
         return None
 
 
