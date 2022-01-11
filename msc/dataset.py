@@ -267,7 +267,7 @@ class baseDataset:
 
         return self.samples_df.interval.apply(get_interval_length).max()
 
-    def get_train_x(self, crop: float = 400) -> Tensor:
+    def get_train_x(self, crop_seconds: float = 400) -> Tensor:
         """
         return the time axis
         Args:
@@ -282,16 +282,17 @@ class baseDataset:
         sfreq = self.metadata.get('sfreq')
         T = self.T_max
         N = sfreq * T
-        crop_idx = int(sfreq * crop)
+        crop_idx = int(sfreq * crop_seconds)
         return torch.linspace(0, T, int(N))[:crop_idx]
 
     @torch.no_grad()
-    def get_train_y(self, num_channels: int = 2, crop: float = 400, normalize=True) -> Tensor:
+    def get_train_y(self, num_channels: int = 2, crop_seconds: float = 400, normalize=True, delay_seconds=0) -> Tensor:
         """
         return the data
         Args:
+            delay_seconds:
             num_channels:
-            crop:
+            crop_seconds:
             normalize:
 
         Returns:
@@ -308,8 +309,11 @@ class baseDataset:
 
         sfreq = self.metadata.get('sfreq')
         N = sfreq * self.T_max
-        crop_idx = int(sfreq * crop)
-        padded = torch.stack([pad(torch.tensor(x[:num_channels]), N)[..., :crop_idx] for x in self.samples_df.x])
+        crop_idx = int(sfreq * crop_seconds)
+        delay_idx = int(sfreq * delay_seconds)
+        # zero pads all xs to same length, delay by delay_seconds
+        padded = torch.stack(
+            [pad(torch.tensor(x[:num_channels]), N)[..., delay_idx:(delay_idx + crop_idx)] for x in self.samples_df.x])
         train_y = padded
 
         if normalize:
@@ -317,7 +321,7 @@ class baseDataset:
             # m = nn.BatchNorm1d(num_features=num_channels, dtype=torch.double)
             # train_y = m(train_y.double())
 
-        return train_y.float()
+        return train_y.squeeze().float()
 
 
 class SeizuresDataset(baseDataset):
@@ -326,6 +330,8 @@ class SeizuresDataset(baseDataset):
     Regular instantiation (__init__()) can be used for loading an existing dataset.
     @classmethod generate_dataset() can be used to generate one from scratch.
     """
+
+    name = "seizures"
 
     def __init__(self, dataset_dir: str, num_channels=2, preload_data=False):
         """
@@ -440,6 +446,7 @@ class UniformDataset(baseDataset):
     Regular instantiation (__init__()) can be used for loading an existing dataset.
     @classmethod generate_dataset() can be used to generate one from scratch.
     """
+    name = "uniform"
 
     def __init__(self, dataset_dir: str, num_channels=2, preload_data=True, add_check_isseizure=True,
                  add_data_index=True):
@@ -451,7 +458,6 @@ class UniformDataset(baseDataset):
             add_check_isseizure:
         """
         super().__init__(dataset_dir=dataset_dir, preload_data=preload_data)
-
         # self.samples_df = self.samples_df.set_index(['window_id'])
         self.num_channels = num_channels
 
