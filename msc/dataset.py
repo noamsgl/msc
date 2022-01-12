@@ -17,7 +17,7 @@ from portion import Interval
 from torch import Tensor
 from tqdm import tqdm
 
-from msc import config
+from msc import config, exps
 # from msc.data_utils import get_preictal_intervals, get_interictal_intervals
 # from msc.data_utils.features import extract_feature_from_numpy
 # from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
@@ -323,6 +323,7 @@ class baseDataset:
         return train_y.squeeze().float()
 
 
+
 class SeizuresDataset(baseDataset):
     """
     A class for a dataset composed of seizures only.
@@ -332,13 +333,15 @@ class SeizuresDataset(baseDataset):
 
     name = "seizures"
 
-    def __init__(self, dataset_dir: str, num_channels=2, preload_data=False):
+    def __init__(self, dataset_dir: str=None, num_channels=2, preload_data=False):
         """
         Args:
             dataset_dir:
             num_channels:
             preload_data:
         """
+        if dataset_dir is None:
+            dataset_dir = exps['PATH']['SEIZURES_DATASET']
         super().__init__(dataset_dir=dataset_dir, preload_data=preload_data)
         self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
         self.dataset_dir = dataset_dir
@@ -442,7 +445,7 @@ class UniformDataset(baseDataset):
     """
     name = "uniform"
 
-    def __init__(self, dataset_dir: str, num_channels=2, preload_data=True, add_check_isseizure=True,
+    def __init__(self, dataset_dir: str=None, num_channels=2, preload_data=True, add_check_isseizure=True,
                  add_data_index=True):
         """
         Args:
@@ -451,6 +454,8 @@ class UniformDataset(baseDataset):
             preload_data:
             add_check_isseizure:
         """
+        if dataset_dir is None:
+            dataset_dir = exps['PATH']['UNIFORM_DATASET']
         super().__init__(dataset_dir=dataset_dir, preload_data=preload_data)
         # self.samples_df = self.samples_df.set_index(['window_id'])
         self.num_channels = num_channels
