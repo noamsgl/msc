@@ -30,6 +30,7 @@ mne-features = "*"
 #xgboost = "*"
 pyyaml = "*"
 borb = "*"
+clearml = "*"
 
 [dev-packages]
 #paramiko = "*"
