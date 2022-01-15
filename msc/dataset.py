@@ -240,12 +240,10 @@ class baseDataset:
             print("loading")
             windows_dict = {window_id: x for window_id, x in self.file_loader(self.dataset_dir)}
             self.samples_df["x"] = self.samples_df.apply(lambda sample: windows_dict[sample.window_id], axis=1)
+            self.samples_df["x_shape"] = self.samples_df.x.apply(lambda x: x.shape)
             print("done loading")
             self.data_loaded = True
-            # todo: fix this for SeizuresDataset
-            # self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
-            # self.labels = list(self.samples_df.label)a
-            assert self.data_loaded, "error: exit condition not met"
+            assert self.data_loaded, "error: exit condition not met (variable self.data_loaded incorrect)"
         except Exception as e:
             raise RuntimeError(f"Was unable to load samples from {self.file_loader=}, check the dataset") from e
 

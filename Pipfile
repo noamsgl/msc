@@ -29,7 +29,11 @@ portion = "*"
 mne-features = "*"
 #xgboost = "*"
 pyyaml = "*"
+borb = "*"
 
 [dev-packages]
 #paramiko = "*"
 #fooof = "*"
+
+[pipenv]
+allow_prereleases = true
