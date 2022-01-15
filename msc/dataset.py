@@ -315,12 +315,12 @@ class baseDataset:
         train_y = padded
 
         if normalize:
+            # todo: normalize by channel (not all at once)
             train_y = (train_y - train_y.mean()) / train_y.std()
             # m = nn.BatchNorm1d(num_features=num_channels, dtype=torch.double)
             # train_y = m(train_y.double())
 
         return train_y.squeeze().float()
-
 
 
 class SeizuresDataset(baseDataset):
