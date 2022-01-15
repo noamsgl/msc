@@ -2,9 +2,13 @@
 python_version = "3.8"
 
 [[source]]
+name = 'pypi'
 url = 'https://pypi.python.org/simple'
 verify_ssl = true
-name = 'pypi'
+#[[source]]
+#name = "pytorch"
+#url = "https://download.pytorch.org/whl/cu102"
+#verify_ssl = false
 
 [packages]
 jupyter = "*"
@@ -14,27 +18,28 @@ mne = "*"
 matplotlib = "*"
 scikit-learn = "*"
 tqdm = "*"
-#seaborn = "*"
-#pytest = "*"
+seaborn = "*"
+gpytorch = "*"
+gitpython = "*"
+portion = "*"
+mne-features = "*"
+pyyaml = "*"
+borb = "*"
+clearml = "*"
 # gluonts = "*"
 # pytorchts = "*"
 # pyro
 # tvb-library
-# pyqt5
-gpytorch = "*"
-gitpython = "*"
-#nitime = "*"
-#pyqt5 = "*"
-portion = "*"
-mne-features = "*"
-#xgboost = "*"
-pyyaml = "*"
-borb = "*"
-clearml = "*"
+# nitime = "*"
+# pyqt5 = "*"
+# xgboost = "*"
+# torch = {index = "pytorch",version = "==1.10.1"}
+# paramiko = "*"
+# fooof = "*"
+torch = {file = "https://download.pytorch.org/whl/cu102/torch-1.10.1%2Bcu102-cp38-cp38-win_amd64.whl"}
 
 [dev-packages]
-#paramiko = "*"
-#fooof = "*"
+# pytest = "*"
 
 [pipenv]
 allow_prereleases = true

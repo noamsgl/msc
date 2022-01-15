@@ -267,6 +267,7 @@ class baseDataset:
 
     def get_train_x(self, crop_seconds: float = 400) -> Tensor:
         """
+        # todo: rename to get_times()
         return the time axis, cropped to crop_seconds with help of sfreq and T_max
         Args: crop_seconds
 

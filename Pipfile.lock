@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a2c6a1cf70082e58d38cb3068f2df6ab83ec7c6d52f0475d6dfdb6bd8a3559fd"
+            "sha256": "425899775e78f7b4da2ab79c9e4dabe5c579c9dcbb321cf33249c0cde73468c2"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -1308,6 +1308,14 @@
             "markers": "python_version < '3.11' and python_version >= '3.8'",
             "version": "==1.8.0rc2"
         },
+        "seaborn": {
+            "hashes": [
+                "sha256:85a6baa9b55f81a0623abddc4a26b334653ff4c6b18c418361de19dbba0ef283",
+                "sha256:cf45e9286d40826864be0e3c066f98536982baf701a7caa386511792d61ff4f6"
+            ],
+            "index": "pypi",
+            "version": "==0.11.2"
+        },
         "send2trash": {
             "hashes": [
                 "sha256:56215329f48b4b147d93719fe901d7de84cae0048cad6e6c31e6d593d9f2dcbb",
@@ -1377,6 +1385,14 @@
             ],
             "markers": "python_version >= '3.6'",
             "version": "==1.2.3"
+        },
+        "torch": {
+            "file": "https://download.pytorch.org/whl/cu102/torch-1.10.1%2Bcu102-cp38-cp38-win_amd64.whl",
+            "hashes": [
+                "sha256:15bbd666e42e539f6e9e660d48d07658e6f3c4b71906293ba1847e813adee56c"
+            ],
+            "index": "pypi",
+            "version": "==1.10.1+cu102"
         },
         "tornado": {
             "hashes": [
