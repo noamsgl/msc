@@ -21,8 +21,11 @@ def plot_sample(times, sample) -> None:
     plt.clf()
     fig = plt.gcf()
     ax: Axes = fig.add_subplot()
-    ax.plot(times, sample)
     ax.set_xlabel("time (s)")
+    for i in range(len(sample)):
+        channel = sample[i]
+        channel += i
+        ax.plot(times, channel)
     # return
     return plt.gcf()
 
@@ -36,7 +39,8 @@ def main(dataset_name="uniform"):
 
     layout: PageLayout = SingleColumnLayout(page)
 
-    layout.add(Paragraph("Raw Data Plots of Uniform Dataset", font_size=Decimal(24)))
+    layout.add(Paragraph(f"Raw Data Plots of {dataset_name.capitalize()} Dataset", font_size=Decimal(24)))
+
     # load dataset
     if dataset_name == "uniform":
         dataset = UniformDataset(r"C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae\UNIFORM\20220106T165558")
@@ -47,19 +51,18 @@ def main(dataset_name="uniform"):
 
     times = dataset.get_train_x()
     samples = dataset.get_train_y(num_channels=10)
-    for i in tqdm(range(len(samples))):
-        for j in range(len(samples[i])):
-            sample = samples[i][j]
-            layout.add(Paragraph(f"Sample {i + 1}/{len(samples)}, Channel {j + 1}/{len(samples[i])}"))
-            layout.add(Chart(plot_sample(times, sample),
-                             width=Decimal(400),
-                             height=Decimal(256)
-                             )
-                       )
+    for i in tqdm(range(len(samples))[:10]):
+        layout.add(Paragraph(f"Sample {i + 1}/{len(samples)}"))
+        sample = samples[i]
+        layout.add(Chart(plot_sample(times, sample),
+                         width=Decimal(400),
+                         height=Decimal(256)
+                         )
+                   )
 
     with open(f"{config['PATH']['LOCAL']['RESULTS']}/reports/{dataset_name.upper()}_{get_time_as_str()}.pdf", "wb") as out_file_handle:
         PDF.dumps(out_file_handle, doc)
 
 
 if __name__ == "__main__":
-    main("seizures")
+    main("uniform")
