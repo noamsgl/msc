@@ -23,6 +23,7 @@ from msc import config, exps
 # from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
 from msc.data_utils import PicksOptions, get_time_as_str, add_raws_to_intervals_df, get_preictal_intervals, \
     get_interictal_intervals, extract_feature_from_numpy
+from msc.matlab_to_numpy import loadmat
 
 
 def static_vars(**kwargs):
@@ -321,7 +322,7 @@ class baseDataset:
             interim = train_y.transpose(0, 1)
             mean = torch.mean(interim.reshape(interim.shape[0], -1), dim=-1)
             std = torch.std(interim.reshape(interim.shape[0], -1), dim=-1)
-            interim = (interim - mean.view(-1,1,1)) / std.view(-1,1,1)
+            interim = (interim - mean.view(-1, 1, 1)) / std.view(-1, 1, 1)
             train_y = interim.transpose(0, 1)
             # m = nn.BatchNorm1d(num_features=num_channels, dtype=torch.double)
             # train_y = m(train_y.double())
@@ -826,6 +827,43 @@ class PSPDataset(baseDataset):
 
         windows = intervals.groupby('label_desc').apply(func=split_intervals_to_windows)
         return windows
+
+
+class DogDataset:
+    def __init__(self, dataset_dir):
+        self.dataset_dir = dataset_dir
+
+    def normalized_samples(self):
+        all_samples = list(self.samples_generator())
+        samples_df = pd.concat(all_samples)
+        data_cols = [col for col in samples_df.columns if 'Ecog' in col]
+        assert len(data_cols) > 0, "Error: data cols not found"
+        samples_df[data_cols] = (samples_df[data_cols] - samples_df[data_cols].mean()) / samples_df[data_cols].std()
+        return samples_df
+
+    def samples_generator(self):
+        for root, dirs, files in os.walk(self.dataset_dir, topdown=False):
+            for name in files:
+                if 'interictal' in name:
+                    label_desc = 'interictal'
+                elif 'ictal' in name:
+                    label_desc = 'ictal'
+                elif 'test' in name:
+                    continue
+                else:
+                    raise ValueError("unknown label desc")
+                fpath = os.path.join(root, name)
+                mat_content = loadmat(fpath)
+                data = mat_content['data']
+                channel_names = list(mat_content['channels'].values())
+                freq = mat_content['freq']
+                T = data.shape[-1] / freq
+                times = np.linspace(0, T, data.shape[-1])
+                sample_df = pd.DataFrame(data.T, columns=channel_names)
+                sample_df["time"] = times
+                sample_df["label_desc"] = label_desc
+                sample_df["fname"] = name
+                yield sample_df
 
 
 class MaskedDataset(PSPDataset):
