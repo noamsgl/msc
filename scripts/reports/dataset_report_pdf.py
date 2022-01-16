@@ -30,7 +30,7 @@ def plot_sample(times, sample) -> None:
     return plt.gcf()
 
 
-def main(dataset_name="uniform"):
+def main(dataset_name="uniform", delay_seconds=None):
     dataset_name = dataset_name.lower()
 
     doc: Document = Document()
@@ -40,6 +40,7 @@ def main(dataset_name="uniform"):
     layout: PageLayout = SingleColumnLayout(page)
 
     layout.add(Paragraph(f"Raw Data Plots of {dataset_name.capitalize()} Dataset", font_size=Decimal(24)))
+    layout.add(Paragraph(f"Segments delayed by {delay_seconds} seconds.", font_size=Decimal(20)))
 
     # load dataset
     if dataset_name == "uniform":
@@ -49,10 +50,10 @@ def main(dataset_name="uniform"):
     else:
         raise ValueError()
 
-    times = dataset.get_train_x()
-    samples = dataset.get_train_y(num_channels=10)
-    for i in tqdm(range(len(samples))[:10]):
-        layout.add(Paragraph(f"Sample {i + 1}/{len(samples)}"))
+    times = dataset.get_train_x(crop_seconds=1000/256)
+    samples = dataset.get_train_y(num_channels=10, crop_seconds=1000/256, delay_seconds=delay_seconds)
+    for i in tqdm(range(len(samples))[:]):
+        layout.add(Paragraph(f"{dataset_name.capitalize()}(t+{delay_seconds}) sample {i + 1}/{len(samples)}"))
         sample = samples[i]
         layout.add(Chart(plot_sample(times, sample),
                          width=Decimal(400),
@@ -65,4 +66,6 @@ def main(dataset_name="uniform"):
 
 
 if __name__ == "__main__":
-    main("uniform")
+    for d in [0, 10, 20, 30, 40, 50]:
+        print(f"beginning main with {d=}")
+        main("seizures", delay_seconds=d)

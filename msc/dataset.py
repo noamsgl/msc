@@ -261,8 +261,10 @@ class baseDataset:
     @property
     def T_max(self):
         def get_interval_length(interval: Interval):
-            assert isinstance(interval, Interval), f"Error: interval is not of type Interval ({interval=}, {type(interval)=})"
+            assert isinstance(interval,
+                              Interval), f"Error: interval is not of type Interval ({interval=}, {type(interval)=})"
             return (interval.upper - interval.lower).total_seconds()
+
         return self.samples_df.window_interval.apply(get_interval_length).max()
 
     def get_train_x(self, crop_seconds: float = 400) -> Tensor:
@@ -316,7 +318,11 @@ class baseDataset:
 
         if normalize:
             # todo: normalize by channel (not all at once)
-            train_y = (train_y - train_y.mean()) / train_y.std()
+            interim = train_y.transpose(0, 1)
+            mean = torch.mean(interim.reshape(interim.shape[0], -1), dim=-1)
+            std = torch.std(interim.reshape(interim.shape[0], -1), dim=-1)
+            interim = (interim - mean.view(-1,1,1)) / std.view(-1,1,1)
+            train_y = interim.transpose(0, 1)
             # m = nn.BatchNorm1d(num_features=num_channels, dtype=torch.double)
             # train_y = m(train_y.double())
 
@@ -332,7 +338,7 @@ class SeizuresDataset(baseDataset):
 
     name = "seizures"
 
-    def __init__(self, dataset_dir: str=None, num_channels=2, preload_data=False):
+    def __init__(self, dataset_dir: str = None, num_channels=2, preload_data=False):
         """
         Args:
             dataset_dir:
@@ -444,7 +450,7 @@ class UniformDataset(baseDataset):
     """
     name = "uniform"
 
-    def __init__(self, dataset_dir: str=None, num_channels=2, preload_data=True, add_check_isseizure=True,
+    def __init__(self, dataset_dir: str = None, num_channels=2, preload_data=True, add_check_isseizure=True,
                  add_data_index=True):
         """
         Args:
@@ -578,7 +584,8 @@ class UniformDataset(baseDataset):
 
         cols_to_use = ['fname'] + ['ch_names', 'lowpass']  # key + columns
 
-        self.samples_df = pd.merge(self.samples_df, data_index_df[cols_to_use], on='fname', how='outer').dropna(subset=['window_id'])
+        self.samples_df = pd.merge(self.samples_df, data_index_df[cols_to_use], on='fname', how='outer').dropna(
+            subset=['window_id'])
         return None
 
 
