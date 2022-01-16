@@ -236,3 +236,4 @@ notesbooks/*
 !input/raw_eeg/8010200_0006.head
 
 #### END MSC GITIGNORE ####
+/data/
