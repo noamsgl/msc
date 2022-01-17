@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='msc',
-    version='1.0.0',
+    name='pymsc',
+    version='0.1.0-alpha.3',
     url='https://github.com/noamsgl/msc',
     author='Noam Siegel',
     author_email='noamsi@post.bgu.ac.il',
-    description='Physiological Signal Processing Course',
+    description='The repository for all my masters of CS degree',
     packages=find_packages(),    
     install_requires=[],
 )
