@@ -834,7 +834,7 @@ class SingleSampleDataset(Dataset):
     def __init__(self, x: Tensor, y: Tensor):
         self.x = x
         self.y = y
-        self.samples = [(x, y)]
+        self.samples = ((x, y),)
 
     def __len__(self):
         return 1
