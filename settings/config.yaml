@@ -1,5 +1,6 @@
 ---
 FAST_DEV: TRUE
+FAST_DEV_K: 3
 PATH:
   LOCAL:
     RAW_DATASET: C:\raw_data\epilepsiae

@@ -15,9 +15,10 @@ from numpy import ndarray
 from pandas import DataFrame, Series
 from portion import Interval
 from torch import Tensor
+from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from msc import config, exps
+from msc import config
 # from msc.data_utils import get_preictal_intervals, get_interictal_intervals
 # from msc.data_utils.features import extract_feature_from_numpy
 # from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
@@ -829,11 +830,26 @@ class PSPDataset(baseDataset):
         return windows
 
 
+class SingleSampleDataset(Dataset):
+    def __init__(self, x: Tensor, y: Tensor):
+        self.x = x
+        self.y = y
+        self.samples = [(x, y)]
+
+    def __len__(self):
+        return 1
+
+    def __getitem__(self, idx):
+        return self.samples[idx]
+
+
 class DogDataset:
     def __init__(self, dataset_dir):
         self.dataset_dir = dataset_dir
+        self.samples_df = self.normalized_samples()
+        self.ch_names = [col for col in self.samples_df.columns if 'Ecog' in col]
 
-    def normalized_samples(self):
+    def normalized_samples(self) -> DataFrame:
         all_samples = list(self.samples_generator())
         samples_df = pd.concat(all_samples)
         data_cols = [col for col in samples_df.columns if 'Ecog' in col]
@@ -865,6 +881,59 @@ class DogDataset:
                 sample_df["fname"] = name
                 yield sample_df
 
+
+#
+# class DogsSampleDataModule(LightningDataModule):
+#     def __init__(self, dataset_dir):
+#         super().__init__()
+#         self.samples_df = self.normalized_samples()
+#
+#         self.save_hyperparameters()
+#
+#
+#     def setup(self, stage=None) -> None:
+#
+#         if stage == 'fit' or stage is None:
+#
+#         if stage == ''
+#
+#     def train_dataloader(self):
+#         loader = DataLoader(
+#             self.dataset
+#         )
+#
+#     def normalized_samples(self):
+#         all_samples = list(self.samples_generator())
+#         samples_df = pd.concat(all_samples)
+#         data_cols = [col for col in samples_df.columns if 'Ecog' in col]
+#         assert len(data_cols) > 0, "Error: data cols not found"
+#         samples_df[data_cols] = (samples_df[data_cols] - samples_df[data_cols].mean()) / samples_df[data_cols].std()
+#         return samples_df
+#
+#     def samples_generator(self):
+#         for root, dirs, files in os.walk(self.hparams.dataset_dir, topdown=False):
+#             for name in files:
+#                 if 'interictal' in name:
+#                     label_desc = 'interictal'
+#                 elif 'ictal' in name:
+#                     label_desc = 'ictal'
+#                 elif 'test' in name:
+#                     continue
+#                 else:
+#                     raise ValueError("unknown label desc")
+#                 fpath = os.path.join(root, name)
+#                 mat_content = loadmat(fpath)
+#                 data = mat_content['data']
+#                 channel_names = list(mat_content['channels'].values())
+#                 freq = mat_content['freq']
+#                 T = data.shape[-1] / freq
+#                 times = np.linspace(0, T, data.shape[-1])
+#                 sample_df = pd.DataFrame(data.T, columns=channel_names)
+#                 sample_df["time"] = times
+#                 sample_df["label_desc"] = label_desc
+#                 sample_df["fname"] = name
+#                 yield sample_df
+#
 
 class MaskedDataset(PSPDataset):
     def __init__(self, dataset_dir: str, mask: ndarray):
