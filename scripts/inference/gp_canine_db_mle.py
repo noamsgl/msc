@@ -1,7 +1,5 @@
-import gpytorch
 import matplotlib.pyplot as plt
-import pytorch_lightning as pl
-import torch
+
 from clearml import Task
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -10,55 +8,7 @@ from torch.utils.data import DataLoader
 
 from msc import config
 from msc.dataset import DogDataset, SingleSampleDataset
-
-
-class EEGGPModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood):
-        gpytorch.models.ExactGP.__init__(self, train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ZeroMean()
-        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(1.5))
-
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        cover_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, cover_x)
-
-
-class SingleSampleEEGGPModel(pl.LightningModule):
-    def __init__(self, hparams, train_x, train_y):
-        super().__init__()
-        self.save_hyperparameters(hparams)
-
-        self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
-        self.gpmodel = EEGGPModel(train_x, train_y, self.likelihood)
-
-        self.mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self.gpmodel)
-
-    def forward(self, x):
-        # compute prediction
-        return self.gpmodel(x)
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
-        return optimizer
-
-    def training_step(self, batch, batch_idx):
-        assert batch[0].shape[0] == 1 and batch[1].shape[0] == 1, "error: batch size must be 1"
-        x, y = batch
-        x, y = x.squeeze(), y.squeeze()
-        # pass through the forward function
-        output = self(x)
-
-        # calc loss
-        loss = -self.mll(output, y)
-        self.log('train_loss', loss)
-        for param_name, param in model.named_parameters():
-            self.log(param_name, param.item())
-        return {'loss': loss}
-
-    def test_step(self, batch, batch_idx):
-        raise NotImplementedError()
-
+from msc.models import SingleSampleEEGGPModel
 
 if __name__ == '__main__':
     seed_everything(42)
@@ -101,13 +51,14 @@ if __name__ == '__main__':
 
             model = SingleSampleEEGGPModel(hparams, train_x, train_y)
 
+            # plot prior samples
             for i in range(n_draws):
                 plt.plot(train_x, model(train_x).sample())
             plt.xlabel('time (s)')
             plt.title('Prior')
             plt.show()
 
-            # saves a file like: my/path/sample-mnist-epoch=02-val_loss=0.32.ckpt
+            # define trainer and fit model
             checkpoint_callback = ModelCheckpoint(
                 monitor="train_loss",
                 dirpath=f"{config['PATH']['LOCAL']['LIGHTNING_LOGS']}/{fname[:-4]}/{ch_name[-4:]}",
@@ -120,14 +71,12 @@ if __name__ == '__main__':
             trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=1, gpus=1, profiler=False,
                               callbacks=[checkpoint_callback], fast_dev_run=False)
             trainer.fit(model, train_dataloader)
-            # trainer.save_checkpoint('trained_model.ckpt')
 
+            # plot posterior samples
             for i in range(n_draws):
                 plt.plot(train_x, model(train_x).sample())
             plt.xlabel('time (s)')
             plt.title('Posterior')
             plt.show()
-
-            # trainer.test(test_dataloaders=train_dataloader)
 
             task.close()
