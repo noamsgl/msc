@@ -32,6 +32,9 @@ if __name__ == '__main__':
                  # samples_df['fname'] == selected_fname,
                  selected_ch_names + ['time', 'fname']]
 
+    # FILTER: keep only interictal rows
+    samples_df = samples_df[samples_df['fname'].apply(lambda name: 'interictal' in name)]
+
     for fname, group in samples_df.groupby('fname'):
         for ch_name in selected_ch_names:
             print(f"beginning training with {fname}/{ch_name}")
@@ -68,7 +71,7 @@ if __name__ == '__main__':
                 every_n_epochs=1000
             )
 
-            trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=1, gpus=1, profiler=False,
+            trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=1, gpus=1, profiler=None,
                               callbacks=[checkpoint_callback], fast_dev_run=False)
             trainer.fit(model, train_dataloader)
 
