@@ -15,6 +15,7 @@ class GPResultsCollector:
     1) get Gaussian Process related requested_params from ClearML
     2) parse results into results_df
     """
+
     def __init__(self, requested_params):
         # create an authenticated session
         session = Session()
@@ -31,8 +32,9 @@ class GPResultsCollector:
 
         # get all the tasks
         tasks_list = []
-        for i in range(5):
-            print(f"getting page={i}")
+        n_pages = 5
+        for i in range(n_pages):
+            print(f"getting page={i + 1}/{n_pages}")
             tasks_res = session.send(tasks.GetAllRequest(project=project_ids, page_size=500, page=i))
             tasks_list += tasks_res.response_data['tasks']
 
