@@ -41,6 +41,7 @@ pymef = "*"
 kaggle = "*"
 xmltodict = "*"
 pytorch-lightning = "*"
+mlxtend = "*"
 
 [dev-packages]
 # pytest = "*"
