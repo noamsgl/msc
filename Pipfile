@@ -24,11 +24,11 @@ gitpython = "*"
 portion = "*"
 mne-features = "*"
 pyyaml = "*"
-borb = "*"
+#borb = "*"
 clearml = "*"
 # gluonts = "*"
 # pytorchts = "*"
-# pyro
+pyro-ppl = "*"
 # tvb-library
 # nitime = "*"
 # pyqt5 = "*"
