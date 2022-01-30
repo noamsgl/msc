@@ -61,6 +61,7 @@ def main(dataset_dir: str, dataset_name):
                          )
                    )
 
+    # dump to PDF
     with open(f"{config['PATH']['LOCAL']['RESULTS']}/reports/{dataset_name.upper()}_{get_time_as_str()}.pdf",
               "wb") as out_file_handle:
         PDF.dumps(out_file_handle, doc)

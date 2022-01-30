@@ -82,4 +82,5 @@ if __name__ == '__main__':
             plt.title('Posterior')
             plt.show()
 
+            # close task
             task.close()
