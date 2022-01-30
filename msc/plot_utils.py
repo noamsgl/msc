@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 
-def plot_sample(times, sample) -> None:
+def plot_sample(times, sample) -> Figure:
     # plot
     plt.clf()
     fig = plt.gcf()
