@@ -1,4 +1,8 @@
-from collections import Counter
+"""
+Noam Siegel
+30 Jan 2022
+Generate a PDF report with EEG samples
+"""
 from decimal import Decimal
 from itertools import count
 
@@ -12,7 +16,6 @@ from borb.pdf.page.page import Page
 from borb.pdf.pdf import PDF
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from tqdm import tqdm
 
 from msc import config
 from msc.data_utils import get_time_as_str
@@ -20,7 +23,7 @@ from msc.dataset import DogDataset
 
 
 def plot_sample(group) -> Figure:
-    # plot
+    # plot EEG sample
     plt.clf()
     fig = plt.gcf()
     ax: Axes = fig.add_subplot()
@@ -36,14 +39,16 @@ def plot_sample(group) -> Figure:
 
 
 def main(dataset_dir: str, dataset_name):
+    # get dataset name
     dataset_name = dataset_name.lower()
-
+    # initialize PDF document
     doc: Document = Document()
     page: Page = Page()
     doc.append_page(page)
 
     layout: PageLayout = SingleColumnLayout(page)
 
+    # add Title Heading
     layout.add(Paragraph(f"Raw Data Plots of {dataset_name.capitalize()} Dataset", font_size=Decimal(24)))
 
     # load dataset
