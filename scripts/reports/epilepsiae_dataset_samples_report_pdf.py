@@ -1,6 +1,5 @@
 from decimal import Decimal
 
-import matplotlib.pyplot as plt
 from borb.pdf.canvas.layout.image.chart import Chart
 from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
 from borb.pdf.canvas.layout.page_layout.page_layout import PageLayout
@@ -8,26 +7,12 @@ from borb.pdf.canvas.layout.text.paragraph import Paragraph
 from borb.pdf.document import Document
 from borb.pdf.page.page import Page
 from borb.pdf.pdf import PDF
-from matplotlib.axes import Axes
 from tqdm import tqdm
 
 from msc import config
 from msc.data_utils import get_time_as_str
 from msc.dataset import UniformDataset, SeizuresDataset
-
-
-def plot_sample(times, sample) -> None:
-    # plot
-    plt.clf()
-    fig = plt.gcf()
-    ax: Axes = fig.add_subplot()
-    ax.set_xlabel("time (s)")
-    for i in range(len(sample)):
-        channel = sample[i]
-        channel += i
-        ax.plot(times, channel)
-    # return
-    return plt.gcf()
+from msc.plot_utils import plot_sample
 
 
 def main(dataset_name="uniform", delay_seconds=None):
@@ -50,8 +35,8 @@ def main(dataset_name="uniform", delay_seconds=None):
     else:
         raise ValueError()
 
-    times = dataset.get_train_x(crop_seconds=1000/256)
-    samples = dataset.get_train_y(num_channels=10, crop_seconds=1000/256, delay_seconds=delay_seconds)
+    times = dataset.get_train_x(crop_seconds=1000 / 256)
+    samples = dataset.get_train_y(num_channels=10, crop_seconds=1000 / 256, delay_seconds=delay_seconds)
     for i in tqdm(range(len(samples))[:]):
         layout.add(Paragraph(f"{dataset_name.capitalize()}(t+{delay_seconds}) sample {i + 1}/{len(samples)}"))
         sample = samples[i]
@@ -61,7 +46,8 @@ def main(dataset_name="uniform", delay_seconds=None):
                          )
                    )
 
-    with open(f"{config['PATH']['LOCAL']['RESULTS']}/reports/{dataset_name.upper()}_{get_time_as_str()}.pdf", "wb") as out_file_handle:
+    with open(f"{config['PATH']['LOCAL']['RESULTS']}/reports/{dataset_name.upper()}_{get_time_as_str()}.pdf",
+              "wb") as out_file_handle:
         PDF.dumps(out_file_handle, doc)
 
 
