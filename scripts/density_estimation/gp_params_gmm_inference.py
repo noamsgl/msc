@@ -32,7 +32,7 @@ if __name__ == '__main__':
     task = Task.init(project_name="density_estimation", task_name="gp_matern_params_gmm_sklearn",
                      reuse_last_task_id=True)
     hparams = {'num_samples': 50,
-               'selected_label_desc': "ictal"}
+               'selected_label_desc': "interictal"}
     task.set_parameters(hparams)
 
     requested_params = ['covar_module.raw_outputscale', 'covar_module.base_kernel.raw_lengthscale']
@@ -47,7 +47,8 @@ if __name__ == '__main__':
 
     # plot data join plot (selected label desc)
     hue_order = ["ictal", "interictal"]
-    sns.jointplot(data=results_df.loc[results_df["label_desc"] == hparams['selected_label_desc']],
+    filtered_results_df = results_df.loc[results_df["label_desc"] == hparams['selected_label_desc']]
+    sns.jointplot(data=filtered_results_df,
                   x=requested_params[0], y=requested_params[1],
                   # hue_order=hue_order,
                   hue="label_desc", palette="muted", legend=True)
