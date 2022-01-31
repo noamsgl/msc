@@ -32,7 +32,7 @@ if __name__ == '__main__':
     task = Task.init(project_name="density_estimation", task_name="gp_matern_params_gmm_sklearn",
                      reuse_last_task_id=True)
     hparams = {'num_samples': 50,
-               'selected_label_desc': "interictal"}
+               'selected_label_desc': "ictal"}
     task.set_parameters(hparams)
 
     requested_params = ['covar_module.raw_outputscale', 'covar_module.base_kernel.raw_lengthscale']
@@ -85,6 +85,11 @@ if __name__ == '__main__':
     CB = plt.colorbar(CS, shrink=0.8, extend="both")
     plt.scatter(X[:, 0], X[:, 1], 0.8)
 
+    # add axes annotations
+    plt.xlabel(requested_params[0])
+    plt.ylabel(requested_params[1])
+
+    # add title
     plt.title("Negative log-likelihood predicted by a GMM")
     plt.axis("tight")
     plt.show()
