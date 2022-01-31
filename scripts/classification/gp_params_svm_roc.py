@@ -58,6 +58,11 @@ if __name__ == '__main__':
     plt.xlabel(requested_params[0])
     plt.ylabel(requested_params[1])
     plt.title('SVM on Dog 1 GP Matern Params')
+
+    # add legend
+    L = plt.legend()
+    L.get_texts()[0].set_text(le.classes_[0])
+    L.get_texts()[1].set_text(le.classes_[1])
     plt.show()
 
     # plot ROC curve
