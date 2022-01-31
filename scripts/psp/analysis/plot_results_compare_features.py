@@ -4,13 +4,12 @@ import pandas as pd
 from msc.config import get_config
 
 
-
 def plot_results_scores(results_row, patient_name, classifier_name, ax, scorings=('precision', 'recall', 'roc_auc')):
     scoring_cols = [f'test_{sc}' for sc in scorings]
     results = results_row.loc[:, ['feature_name'] + scoring_cols]
     means = results.groupby('feature_name').mean()
     errors = results.groupby('feature_name').std()
-    return means.plot.bar(ax=ax, yerr=errors, xlabel='Feature Name', ylim=(0,1),
+    return means.plot.bar(ax=ax, yerr=errors, xlabel='Feature Name', ylim=(0, 1),
                           title=f"Evaluation Results for Different Features\n{patient_name}, {classifier_name}", rot=18)
 
 

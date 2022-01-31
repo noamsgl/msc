@@ -1,12 +1,16 @@
+"""
+Noam Siegel
+31 Jan 2022
+Plot seizure occurrences on a timeline for dog database
+"""
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 
-from msc.dataset import get_seizures_index_df
 from scripts.canine_db.read_annotations import get_onsets
 
 
-def plot_seizure_occurrences_timeline(onsets, patient_name:str, ax=None):
+def plot_seizure_occurrences_timeline(onsets, patient_name: str, ax=None):
     names = np.arange(len(onsets))
     # Choose some nice levels
     levels = np.tile([-5, 5, -3, 3, -1, 1],

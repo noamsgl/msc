@@ -1,4 +1,3 @@
-from collections import Counter
 from decimal import Decimal
 from itertools import count
 
@@ -12,7 +11,6 @@ from borb.pdf.page.page import Page
 from borb.pdf.pdf import PDF
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from tqdm import tqdm
 
 from msc import config
 from msc.data_utils import get_time_as_str

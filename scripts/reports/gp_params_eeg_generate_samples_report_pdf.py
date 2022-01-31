@@ -7,7 +7,6 @@ from decimal import Decimal
 
 import gpytorch
 import matplotlib.pyplot as plt
-import numpy as np
 import torch
 from borb.pdf.canvas.layout.image.chart import Chart
 from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
@@ -88,7 +87,6 @@ if __name__ == '__main__':
                          height=Decimal(256)
                          )
                    )
-
 
     # dump to PDF
     with open(f"{config['PATH']['LOCAL']['RESULTS']}/reports/generated_samples_{get_time_as_str()}.pdf",

@@ -1,6 +1,6 @@
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.dates as mdates
 
 from msc.dataset import get_seizures_index_df
 
@@ -46,6 +46,7 @@ def plot_seizure_occurrences_timeline(selected_patient, seizures_index_df, ax=No
         ax.spines[spine].set_visible(False)
 
     ax.margins(y=0.1)
+
 
 if __name__ == '__main__':
     seizures_index_df = get_seizures_index_df()

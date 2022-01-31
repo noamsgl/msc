@@ -1,7 +1,6 @@
-from datetime import datetime
 import os
-
 import sys
+from datetime import datetime
 
 from msc.config import get_config
 

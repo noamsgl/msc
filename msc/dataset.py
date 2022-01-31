@@ -347,8 +347,6 @@ class SeizuresDataset(baseDataset):
             num_channels:
             preload_data:
         """
-        if dataset_dir is None:
-            dataset_dir = exps['PATH']['SEIZURES_DATASET']
         super().__init__(dataset_dir=dataset_dir, preload_data=preload_data)
         self.samples_df = self.samples_df.set_index(['patient_name', 'seizure_num'])
         self.dataset_dir = dataset_dir
@@ -461,8 +459,6 @@ class UniformDataset(baseDataset):
             preload_data:
             add_check_isseizure:
         """
-        if dataset_dir is None:
-            dataset_dir = exps['PATH']['UNIFORM_DATASET']
         super().__init__(dataset_dir=dataset_dir, preload_data=preload_data)
         # self.samples_df = self.samples_df.set_index(['window_id'])
         self.num_channels = num_channels

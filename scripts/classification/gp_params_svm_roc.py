@@ -1,10 +1,10 @@
+import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 import sklearn
-import pandas as pd
 from clearml import Task
 from mlxtend.plotting import plot_decision_regions
 from pytorch_lightning import seed_everything
-import matplotlib.pyplot as plt
 from sklearn import svm, preprocessing
 from sklearn.model_selection import train_test_split
 
@@ -16,7 +16,6 @@ if __name__ == '__main__':
     # hparams = {'num_samples': 16}
     # task.set_parameters(hparams)
 
-
     requested_params = ['covar_module.raw_outputscale', 'covar_module.base_kernel.raw_lengthscale']
 
     # get results_df
@@ -26,7 +25,6 @@ if __name__ == '__main__':
     else:
         results_fpath = r"C:\Users\noam\Repositories\noamsgl\msc\results\params\results_gp_dog1_params.csv"
         results_df = pd.read_csv(results_fpath)
-
 
     # plot data join plot (before inference)
     sns.jointplot(data=results_df,

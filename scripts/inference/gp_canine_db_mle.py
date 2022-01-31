@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-
 from clearml import Task
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -29,8 +28,8 @@ if __name__ == '__main__':
                          'NVC0905_22_002_Ecog_c015', 'NVC0905_22_002_Ecog_c016'
                          ]
     samples_df = samples_df.loc[:,
-                 # samples_df['fname'] == selected_fname,
-                 selected_ch_names + ['time', 'fname']]
+                                 # samples_df['fname'] == selected_fname,
+                                 selected_ch_names + ['time', 'fname']]
 
     # FILTER: keep only interictal rows
     samples_df = samples_df[samples_df['fname'].apply(lambda name: 'interictal' in name)]

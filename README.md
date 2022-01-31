@@ -6,34 +6,31 @@
 
 
 ## Index
+The repository structure consists of:
 
-This repository consist of:
+* [scripts/](scripts/): main scripts
+* [scripts/canine_db/](scripts/canine_db/): tools for manipulating Canine Epilepsy Dataset.
+* [scripts/classification/](scripts/classification/): fitting classifiers to embeddings
+* [scripts/density_estimation/](scripts/density_estimation/): fitting density estimators to embeddings
+* [scripts/eda/](scripts/eda/): exploratory data analysis
+* [scripts/generate/](scripts/generate/): generating synthetic EEG data
+* [scripts/inference/](scripts/inference/): conditioning time-series models on data
+* [scripts/psp/](scripts/psp/): scripts for the final project in physiological signal processing
+* [scripts/reports/](scripts/reports/): scripts for dumping results to PDF reports
+* [settings/](settings/): configuration file
+* [msc/](msc/): a Python package with functions used across scripts
 
-* [msc.bocd](msc/bocd): an implementation of Bayesian Online Changepoint Detection.
-* [msc.data_utils](msc/data_utils): utilities to load EEG datasets.
-* [msc.forecaster](msc/forecaster): utilities to train a probabilistic forecasting model. 
-* [notebooks](notebooks): Jupyter notebooks with examples.
-* [scripts](scripts): Jupyter notebooks with examples.
-
-## Examples
-Here are some demonstrations of what you can do with msc.
-
-* [Load EEG dataset](notebooks/demos/load_eeg_data.ipynb)
-* [Run GP inference on cpu](notebooks/demos/demo_GP_workflow.ipynb)
-* [Run GP inference on gpu](notebooks/demos/demo_GP_workflow_gpu.ipynb)
-* [Run BOCD algorithm](notebooks/demos/simple_bayesian_online_changepoint_detection.ipynb)
 
 ## Getting Started
 ### Dependencies
 
-* python >= 3.6
+* python >= 3.8
 * pipenv
 
 ### Installing
 
 * `$ pipenv shell` to activate virtual environment
 * `$ pipenv install` to install project [dependencies](Pipfile)
-
 
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
@@ -43,4 +40,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 * My advisors - Oren and David.
 * Ben Gurion University.
 * Project dependencies.
-* [Eyal](http://www.epilepsy.org.il/) - Israeli Epilepsy Association 
