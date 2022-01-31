@@ -1,5 +1,5 @@
-from pandas import DataFrame
 import matplotlib.pyplot as plt
+from pandas import DataFrame
 from tqdm import tqdm
 
 from msc.dataset import PSPDataset
@@ -20,6 +20,7 @@ def plot_dataset_feature_samples(selected_patient: str, patients_datasets_df: Da
                                 feature_name=dataset.feature_name, ax=axes[i, j])
     plt.tight_layout()
     return None
+
 
 if __name__ == '__main__':
     selected_patient = 'pat_3700'

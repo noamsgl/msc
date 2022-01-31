@@ -1,4 +1,6 @@
-"""Build the dataset for the Advanced Topics in Physiological Signal Processing Course
+"""
+Noam Siegel
+Build the dataset for the Advanced Topics in Physiological Signal Processing Course
 * Clean and standardize the data (artifact removal, zero mean & unit variance per data file)
 * Resample to sfreq (256 in original paper)
 * Split the dataset to train/test
@@ -64,7 +66,6 @@ def main(raw_args=None):
             # get package
             picks = PicksOptions.common_channels
             PSPDataset.generate_dataset(patient, selected_func, picks=picks, fast_dev_mode=fast_dev_mode)
-
 
 
 if __name__ == '__main__':

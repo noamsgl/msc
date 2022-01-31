@@ -224,15 +224,5 @@ cython_debug/
 
 
 ##### MSC GITIGNORE #####
-docs/
-notebooks/tutorials/
-matlab/
-output/*
-#output/exp1/
-input/*
-notesbooks/*
-######## do include some data ########
-!input/raw_eeg/8010200_0006.data
-!input/raw_eeg/8010200_0006.head
-
-#### END MSC GITIGNORE ####
+data/*
+results/*

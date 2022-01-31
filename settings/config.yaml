@@ -1,11 +1,13 @@
 ---
-CI: TRUE
+FAST_DEV: TRUE
+FAST_DEV_K: 3
 PATH:
   LOCAL:
     RAW_DATASET: C:\raw_data\epilepsiae
     RESULTS: C:\Users\noam\Repositories\noamsgl\msc\results
     PSP_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae
     SEIZURES_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae
+    LIGHTNING_LOGS: C:\Users\noam\Repositories\noamsgl\msc\results\lightning_logs
 
   BGUCLUSTER:
     RAW_DATASET: /cs_storage/noamsi/raw_data/epilepsiae/
