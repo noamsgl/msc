@@ -15,14 +15,39 @@ class EEGGPModel(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, cover_x)
 
 
+class multiChannelEEGGPModel(gpytorch.models.ExactGP):
+    def __init__(self, train_x, train_y, likelihood):
+        gpytorch.models.ExactGP.__init__(self, train_x, train_y, likelihood)
+        num_tasks = train_y.size(-1)
+
+        self.mean_module = gpytorch.means.MultitaskMean(
+            gpytorch.means.ZeroMean(), num_tasks=num_tasks
+        )
+        self.covar_module = gpytorch.kernels.MultitaskKernel(
+            gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(1.5)),
+            num_tasks=num_tasks, rank=1
+        )
+
+    def forward(self, x):
+        mean_x = self.mean_module(x)
+        cover_x = self.covar_module(x)
+        return gpytorch.distributions.MultitaskMultivariateNormal(mean_x, cover_x)
+
+
 class SingleSampleEEGGPModel(pl.LightningModule):
     def __init__(self, hparams, train_x, train_y):
         super().__init__()
         self.save_hyperparameters(hparams)
 
-        self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
-        self.gpmodel = EEGGPModel(train_x, train_y, self.likelihood)
-
+        if train_y.dim() == 1:
+            self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
+            self.gpmodel = EEGGPModel(train_x, train_y, self.likelihood)
+        elif train_y.dim() == 2:
+            num_tasks = train_y.size(-1)
+            self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=num_tasks)
+            self.gpmodel = multiChannelEEGGPModel(train_x, train_y, self.likelihood)
+        else:
+            raise ValueError(f"train_y dimension is {train_y.dim()}, should be 1 or 2")
         self.mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self.gpmodel)
 
     def forward(self, x):
