@@ -71,7 +71,12 @@ class SingleSampleEEGGPModel(pl.LightningModule):
 
         # log model parameters
         for param_name, param in self.gpmodel.named_parameters():
-            self.log(param_name, param.item())
+            if param.numel() == 1:
+                self.log(param_name, param.item())
+            else:
+                for i in range(param.numel()):
+                    self.log(f"{param_name}[{i}]", param[i].item())
+
         return {'loss': loss}
 
     def test_step(self, batch, batch_idx):
