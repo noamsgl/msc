@@ -11,13 +11,15 @@ from msc.models import SingleSampleEEGGPModel
 
 if __name__ == '__main__':
     seed_everything(42)
-    n_draws = 8
+    n_draws = 8  # number of samples to draw for plotting
     dataset_dir = r"C:\Users\noam\Repositories\noamsgl\msc\data\seizure-detection\Dog_1"
     dataset = DogDataset(dataset_dir)
     samples_df = dataset.samples_df
 
+    # select only one file
     selected_fname = 'Dog_1_ictal_segment_2.mat'
 
+    # select a subset of channels
     selected_ch_names = ['NVC0905_22_002_Ecog_c001', 'NVC0905_22_002_Ecog_c002',
                          'NVC0905_22_002_Ecog_c003', 'NVC0905_22_002_Ecog_c004',
                          'NVC0905_22_002_Ecog_c005', 'NVC0905_22_002_Ecog_c006',
@@ -27,6 +29,8 @@ if __name__ == '__main__':
                          'NVC0905_22_002_Ecog_c013', 'NVC0905_22_002_Ecog_c014',
                          'NVC0905_22_002_Ecog_c015', 'NVC0905_22_002_Ecog_c016'
                          ]
+
+    # filter samples_df
     samples_df = samples_df.loc[:,
                                  # samples_df['fname'] == selected_fname,
                                  selected_ch_names + ['time', 'fname']]
