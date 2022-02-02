@@ -36,7 +36,7 @@ pyro-ppl = "*"
 # torch = {index = "pytorch",version = "==1.10.1"}
 # paramiko = "*"
 # fooof = "*"
-#torch = {file = "https://download.pytorch.org/whl/cu102/torch-1.10.1%2Bcu102-cp38-cp38-win_amd64.whl"}
+#torch = {file = "https://download.pytorch.org/whl/cu102/torch-1.10.2%2Bcu102-cp38-cp38-win_amd64.whl"}
 pymef = "*"
 kaggle = "*"
 xmltodict = "*"
