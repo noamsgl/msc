@@ -16,23 +16,30 @@ class GPResultsCollector:
     2) parse results into results_df
     """
 
-    def __init__(self, requested_params):
+    def __init__(self, requested_project_name="inference", requested_params=None, n_pages=5):
+        """
+
+        Args:
+            requested_project_name:
+            requested_params:
+            n_pages: number of ClearML results pages to request. Each page contains 500 results.
+        """
+        assert requested_params is not None, "error: requested params must be nonempty iterable of param names"
         # create an authenticated session
         session = Session()
 
-        # get projects matching the name 'inference/'
-        req = Request('POST')
-        projects_res = session.send(projects.GetAllRequest(name='inference'))
+        # get projects matching the name `requested_project_name`
+        projects_res = session.send(projects.GetAllRequest(name=requested_project_name))
         # get all the project Ids matching the project name 'inference'
         project_ids = [p.id for p in projects_res.response.projects]
-
+        # concat all results to dataframe
         projects_df = pd.DataFrame([p.to_dict() for p in projects_res.response.projects])
+        # add label_desc based on file name
         projects_df["label_desc"] = projects_df["name"].apply(
             lambda name: 'interictal' if 'interictal' in name else 'ictal')
 
         # get all the tasks
         tasks_list = []
-        n_pages = 5
         for i in range(n_pages):
             print(f"getting page={i + 1}/{n_pages}")
             tasks_res = session.send(tasks.GetAllRequest(project=project_ids, page_size=500, page=i))
@@ -43,7 +50,14 @@ class GPResultsCollector:
 
         results_df = pd.merge(results_df, projects_df[['id', 'name', 'label_desc']], left_on='project', right_on='id',
                               suffixes=('_task', '_project'))
-        self.results_df = results_df.dropna(subset=requested_params)
+
+        # keep only status==completed
+        results_df = results_df.loc[results_df['status'] == 'completed']
+
+        # drop NaNs
+        results_df = results_df.dropna(subset=requested_params)
+        # save to self
+        self.results_df = results_df
 
     @staticmethod
     def parse_last_metrics(results_df, requested_params):

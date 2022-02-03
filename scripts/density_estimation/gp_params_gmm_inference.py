@@ -2,6 +2,8 @@
 Noam Siegel
 
 Estimate density with GMM of GP parameter results
+Report log likelihood of observations
+
 """
 import matplotlib.pyplot as plt
 import numpy as np

@@ -38,8 +38,20 @@ if __name__ == '__main__':
                                  # samples_df['fname'] == selected_fname,
                                  selected_ch_names + ['time', 'fname']]
 
-    # FILTER: keep only interictal rows
+    # FILTER: keep only inter/ictal rows
     samples_df = samples_df[samples_df['fname'].apply(lambda name: 'interictal' in name)]
+
+    # FILTER: skip completed tasks
+    completed_fnames = [
+        'Dog_1_interictal_segment_104.mat',
+        'Dog_1_interictal_segment_103.mat',
+        'Dog_1_interictal_segment_102.mat',
+        'Dog_1_interictal_segment_101.mat',
+        'Dog_1_interictal_segment_100.mat',
+        'Dog_1_interictal_segment_10.mat',
+        'Dog_1_interictal_segment_1.mat',
+                        ]
+    samples_df = samples_df[samples_df['fname'].apply(lambda name: name not in completed_fnames)]
 
     for fname, group in samples_df.groupby('fname'):
         for pair_ch_names in paired_ch_names:

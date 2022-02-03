@@ -7,6 +7,7 @@ from decimal import Decimal
 
 import gpytorch
 import matplotlib.pyplot as plt
+import pandas as pd
 import torch
 from borb.pdf.canvas.layout.image.chart import Chart
 from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
@@ -61,6 +62,10 @@ if __name__ == '__main__':
 
     # Define number of samples
     N = 10
+
+    # load params estimation results
+    results_fpath = r"C:\Users\noam\Repositories\noamsgl\msc\results\params\results_gp_dog1_params.csv"
+    results_df = pd.read_csv(results_fpath)
 
     # load params generator
     interictal_gmm_fpath = r"C:\Users\noam\Repositories\noamsgl\msc\results\density_estimation_models\GMM_interictal_20220130T124223.joblib"

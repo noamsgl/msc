@@ -1,7 +1,7 @@
 """
 Noam Siegel
-
 Estimate density with GMM of GP parameter results
+Report gmm cluster centroids and error ellipses.
 """
 import matplotlib.pyplot as plt
 import numpy as np

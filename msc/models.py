@@ -24,8 +24,8 @@ class multiChannelEEGGPModel(gpytorch.models.ExactGP):
             gpytorch.means.ZeroMean(), num_tasks=num_tasks
         )
         self.covar_module = gpytorch.kernels.MultitaskKernel(
-            gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel(1.5)),
-            num_tasks=num_tasks, rank=1
+            gpytorch.kernels.MaternKernel(1.5),
+            num_tasks=num_tasks, rank=num_tasks
         )
 
     def forward(self, x):

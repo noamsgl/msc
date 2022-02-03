@@ -35,8 +35,8 @@ if __name__ == '__main__':
                                  # samples_df['fname'] == selected_fname,
                                  selected_ch_names + ['time', 'fname']]
 
-    # FILTER: keep only interictal rows
-    samples_df = samples_df[samples_df['fname'].apply(lambda name: 'interictal' in name)]
+    # FILTER: keep only ictal rows
+    samples_df = samples_df[samples_df['fname'].apply(lambda name: 'interictal' not in name)]
 
     for fname, group in samples_df.groupby('fname'):
         for ch_name in selected_ch_names:
