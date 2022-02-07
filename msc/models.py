@@ -16,7 +16,8 @@ class EEGGPModel(gpytorch.models.ExactGP):
 
 
 class multiChannelEEGGPModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood):
+    def __init__(self, train_x, train_y, likelihood, num_channels: int = 1):
+        assert num_channels == train_y.size(-1), f"error: {num_channels=} does not match {train_y.size(-1)=}"
         gpytorch.models.ExactGP.__init__(self, train_x, train_y, likelihood)
         num_tasks = train_y.size(-1)
 
@@ -25,13 +26,25 @@ class multiChannelEEGGPModel(gpytorch.models.ExactGP):
         )
         self.covar_module = gpytorch.kernels.MultitaskKernel(
             gpytorch.kernels.MaternKernel(1.5),
-            num_tasks=num_tasks, rank=num_tasks
+            num_tasks=num_tasks, rank=1
         )
 
     def forward(self, x):
         mean_x = self.mean_module(x)
         cover_x = self.covar_module(x)
         return gpytorch.distributions.MultitaskMultivariateNormal(mean_x, cover_x)
+
+    def get_params_dict(self):
+        params_dict = {}
+        for param_name, param in self.named_parameters():
+            if param.numel() == 1:
+                params_dict[param_name] = param.item()
+            else:
+                for i in range(param.numel()):
+                    params_dict[f"{param_name}[{i}]"] = param[i].item()
+        return params_dict
+
+
 
 
 class SingleSampleEEGGPModel(pl.LightningModule):
