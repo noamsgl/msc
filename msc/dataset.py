@@ -4,7 +4,7 @@ import os
 import pickle
 import re
 from datetime import timedelta
-from typing import Sequence
+from typing import Sequence, Optional
 
 import numpy as np
 import pandas as pd
@@ -877,6 +877,36 @@ class DogDataset:
                 sample_df["fname"] = name
                 yield sample_df
 
+    def sample_clip(self, num_channels: int, label_desc: Optional[str] = None):
+        """
+        sample a single clip from samples_df
+        Args:
+            num_channels:
+            label_desc:
+
+        Returns:
+
+        """
+        samples_df = self.samples_df
+        fnames = list(samples_df.loc[
+                          samples_df.apply(
+                              lambda row: row['label_desc'] == label_desc if isinstance(label_desc, str) else True,
+                              axis=1)].groupby("fname").groups.keys())
+        selected_fname = np.random.choice(fnames)
+
+        # split channel names into sublists of length num_channels
+        channel_groups = [self.ch_names[x:x + num_channels] for x in
+                          range(0, len(self.ch_names) - len(self.ch_names) % num_channels, num_channels)]
+
+        # sample random channel group
+        selected_ch_group = channel_groups[np.random.choice(len(channel_groups))]
+
+        # select relevant clip
+        clip_df = samples_df.loc[samples_df['fname'] == selected_fname]
+        train_x = Tensor(clip_df['time'].values)
+        train_y = Tensor(clip_df[selected_ch_group].values)
+
+        return train_x.contiguous(), train_y.contiguous()
 
 #
 # class DogsSampleDataModule(LightningDataModule):
