@@ -11,6 +11,7 @@ import pandas as pd
 import portion
 import torch
 import yaml
+from matplotlib import pyplot as plt
 from numpy import ndarray
 from pandas import DataFrame, Series
 from portion import Interval
@@ -839,6 +840,48 @@ class SingleSampleDataset(Dataset):
         return self.samples[idx]
 
 
+@pd.api.extensions.register_dataframe_accessor("eeg")
+class EEGAccessor:
+    def __init__(self, pandas_obj):
+        # DataFrame.__init__(clip)
+        self._validate(pandas_obj)
+        self._obj = pandas_obj
+
+    @staticmethod
+    def _validate(obj):
+        # verify there is a column time
+        if "time" not in obj.columns:
+            raise AttributeError("Must have 'time' in columns")
+
+    @property
+    def ch_names(self):
+        return [col for col in self._obj.columns if 'Ecog' in col]
+
+    @property
+    def sfreq(self):
+        return len(self._obj)/max(self._obj['time'])
+
+    def plot(self):
+        # plot as multichannel EEG timeseries
+        for i, ch_name in enumerate(self.ch_names):
+            plt.plot(self._obj['time'], self._obj[ch_name].to_numpy() + i)
+        plt.xlabel("time (s)")
+        plt.ylabel("EEG with offsets")
+        plt.show()
+
+    def plot_fft(self):
+        # todo: slice xf from 0 onwards
+        from scipy.fft import fft, fftfreq
+        # Number of samples
+        N = len(self._obj)
+
+        yf = fft(self._obj[self.ch_names[0]].to_numpy())
+        xf = fftfreq(N, 1 / self.sfreq)
+
+        plt.plot(xf, np.abs(yf))
+        plt.show()
+
+
 class DogDataset:
     def __init__(self, dataset_dir):
         self.dataset_dir = dataset_dir
@@ -907,6 +950,7 @@ class DogDataset:
         train_y = Tensor(clip_df[selected_ch_group].values)
 
         return train_x.contiguous(), train_y.contiguous()
+
 
 #
 # class DogsSampleDataModule(LightningDataModule):
