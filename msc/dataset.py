@@ -875,8 +875,8 @@ class EEGAccessor:
         # Number of samples
         N = len(self._obj)
 
-        yf = fft(self._obj[self.ch_names[0]].to_numpy())
-        xf = fftfreq(N, 1 / self.sfreq)
+        yf = fft(self._obj[self.ch_names[0]].to_numpy())[:N//2]
+        xf = fftfreq(N, 1 / self.sfreq)[:N//2]
 
         plt.plot(xf, np.abs(yf))
         plt.show()
