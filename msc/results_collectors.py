@@ -7,7 +7,6 @@ import pandas as pd
 
 from clearml.backend_api import Session
 from clearml.backend_api.services import tasks, projects
-from requests import Request
 
 
 class GPResultsCollector:
@@ -55,7 +54,14 @@ class GPResultsCollector:
         results_df = results_df.loc[results_df['status'] == 'completed']
 
         # drop NaNs
-        results_df = results_df.dropna(subset=requested_params)
+        results_df = results_df.dropna(subset=requested_params).reset_index(drop=True)
+
+        #
+        if requested_project_name == "inference/pairs":
+            results_df["fname"] = results_df["name_project"].apply(lambda name_project: name_project.split('/')[-1])
+            results_df["ch_names"] = results_df["name_task"].apply(
+                lambda name_task: [name_task.split("'")[i] for i in [1, 3]])
+
         # save to self
         self.results_df = results_df
 
