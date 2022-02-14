@@ -10,7 +10,11 @@ from msc.dataset import DogDataset, SingleSampleDataset
 from msc.models import SingleSampleEEGGPModel
 
 if __name__ == '__main__':
-    seed_everything(42)
+    # override parameters with provided dictionary
+    hparams = {'random_seed': 42,
+               'learning_rate': 1e-2,
+               'n_epochs': 1000}
+
     n_draws = 8  # number of samples to draw for plotting
     dataset_dir = r"C:\Users\noam\Repositories\noamsgl\msc\data\seizure-detection\Dog_1"
     dataset = DogDataset(dataset_dir)
@@ -35,8 +39,8 @@ if __name__ == '__main__':
 
     # filter samples_df
     samples_df = samples_df.loc[:,
-                                 # samples_df['fname'] == selected_fname,
-                                 selected_ch_names + ['time', 'fname']]
+                 # samples_df['fname'] == selected_fname,
+                 selected_ch_names + ['time', 'fname']]
 
     # FILTER: keep only inter/ictal rows
     samples_df = samples_df[samples_df['fname'].apply(lambda name: 'interictal' in name)]
@@ -50,7 +54,7 @@ if __name__ == '__main__':
         'Dog_1_interictal_segment_100.mat',
         'Dog_1_interictal_segment_10.mat',
         'Dog_1_interictal_segment_1.mat',
-                        ]
+    ]
     samples_df = samples_df[samples_df['fname'].apply(lambda name: name not in completed_fnames)]
 
     for fname, group in samples_df.groupby('fname'):
@@ -58,10 +62,10 @@ if __name__ == '__main__':
             pair_ch_names = list(pair_ch_names)
             print(f"beginning training with {fname}/{pair_ch_names}")
             task = Task.init(project_name=f"inference/pairs/{fname}", task_name=f"gp_{pair_ch_names}")
-            # override parameters with provided dictionary
-            hparams = {'learning_rate': 1e-2,
-                       'n_epochs': 1000}
-            task.set_parameters(hparams)
+            task.connect(hparams)
+
+            # set rng seed
+            seed_everything(hparams['random_seed'])
 
             # setup training data
             train_x = Tensor(group['time'].values)
