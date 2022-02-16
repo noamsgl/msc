@@ -15,6 +15,7 @@ PATH:
     RESULTS: /cs_storage/noamsi/results/
     PSP_DATASET: /cs_storage/noamsi/results/epilepsiae/
     DATA_DIR: /cs_storage/noamsi/msc/data/
+    LIGHTNING_LOGS: /cs_storage/noamsi/msc/results/lightning_logs
 
   MIRIAM:
     RAW_DATASET: \\132.72.65.115\epilepsy_data\Epilepsiea\raw_data

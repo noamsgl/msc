@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from clearml import Task
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import CSVLogger
 from torch import Tensor
 from torch.utils.data import DataLoader
 
@@ -18,7 +19,7 @@ if __name__ == '__main__':
 
     n_draws = 8  # number of samples to draw for plotting
     dataset_dir = f"{config['PATH'][config['RAW_MACHINE']]['DATA_DIR']}/seizure-detection/Dog_1"
-    dataset = DogDataset(dataset_dir)
+    dataset = DogDataset(dataset_dir, include_test=True)
     samples_df = dataset.samples_df
 
     # select only one file
@@ -58,8 +59,8 @@ if __name__ == '__main__':
         for pair_ch_names in paired_ch_names:
             pair_ch_names = list(pair_ch_names)
             print(f"beginning training with {fname}/{pair_ch_names}")
-            task = Task.init(project_name=f"inference/pairs/{fname}", task_name=f"gp_{pair_ch_names}", reuse_last_task_id=False)
-            task.connect(hparams)
+            # task = Task.init(project_name=f"inference/pairs/{fname}", task_name=f"gp_{pair_ch_names}", reuse_last_task_id=False)
+            # task.connect(hparams)
 
             # set rng seed
             seed_everything(hparams['random_seed'])
@@ -87,17 +88,18 @@ if __name__ == '__main__':
             plt.show()
 
             # define trainer and fit model
+            logger_dirpath = f"{config['PATH'][config['RESULTS_MACHINE']]['LIGHTNING_LOGS']}/{fname[:-4]}/{pair_ch_names[-4:]}"
             checkpoint_callback = ModelCheckpoint(
                 monitor="train_loss",
-                dirpath=f"{config['PATH'][config['RESULTS_MACHINE']]['LIGHTNING_LOGS']}/{fname[:-4]}/{pair_ch_names[-4:]}",
+                dirpath=logger_dirpath,
                 filename="gp_inference-{epoch:03d}-{train_loss:.2f}",
                 save_top_k=1,
                 mode="min",
                 every_n_epochs=1000
             )
-
+            logger = CSVLogger(save_dir=logger_dirpath, name="gp_embedding")
             trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=200, gpus=1, profiler=None,
-                              callbacks=[checkpoint_callback], fast_dev_run=False)
+                              callbacks=[checkpoint_callback], fast_dev_run=False, logger=logger)
             trainer.fit(model, train_dataloader)
 
             # plot posterior samples
@@ -108,4 +110,4 @@ if __name__ == '__main__':
             plt.show()
 
             # close task
-            task.close()
+            # task.close()
