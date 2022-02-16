@@ -58,7 +58,7 @@ class SingleSampleEEGGPModel(pl.LightningModule):
         elif train_y.dim() == 2:
             num_tasks = train_y.size(-1)
             self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=num_tasks)
-            self.gpmodel = multiChannelEEGGPModel(train_x, train_y, self.likelihood)
+            self.gpmodel = multiChannelEEGGPModel(train_x, train_y, self.likelihood, num_channels=num_tasks)
         else:
             raise ValueError(f"train_y dimension is {train_y.dim()}, should be 1 or 2")
         self.mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self.gpmodel)

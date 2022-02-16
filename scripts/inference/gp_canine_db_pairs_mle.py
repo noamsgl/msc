@@ -9,6 +9,7 @@ from msc import config
 from msc.dataset import DogDataset, SingleSampleDataset
 from msc.models import SingleSampleEEGGPModel
 
+
 if __name__ == '__main__':
     # override parameters with provided dictionary
     hparams = {'random_seed': 42,
@@ -43,25 +44,21 @@ if __name__ == '__main__':
                  selected_ch_names + ['time', 'fname']]
 
     # FILTER: keep only inter/ictal rows
-    samples_df = samples_df[samples_df['fname'].apply(lambda name: 'interictal' in name)]
-
-    # FILTER: skip completed tasks
-    completed_fnames = [
-        'Dog_1_interictal_segment_104.mat',
-        'Dog_1_interictal_segment_103.mat',
-        'Dog_1_interictal_segment_102.mat',
-        'Dog_1_interictal_segment_101.mat',
-        'Dog_1_interictal_segment_100.mat',
-        'Dog_1_interictal_segment_10.mat',
-        'Dog_1_interictal_segment_1.mat',
-    ]
-    samples_df = samples_df[samples_df['fname'].apply(lambda name: name not in completed_fnames)]
+    selected_label_desc = 'test'
+    if selected_label_desc == 'interictal':
+        samples_df = samples_df[samples_df['fname'].apply(lambda name: 'interictal' in name)]
+    elif selected_label_desc == 'ictal':
+        samples_df = samples_df[samples_df['fname'].apply(lambda name: 'interictal' not in name)]
+    elif selected_label_desc == 'test':
+        samples_df = samples_df[samples_df['fname'].apply(lambda name: 'test' in name)]
+    else:
+        raise ValueError()
 
     for fname, group in samples_df.groupby('fname'):
         for pair_ch_names in paired_ch_names:
             pair_ch_names = list(pair_ch_names)
             print(f"beginning training with {fname}/{pair_ch_names}")
-            task = Task.init(project_name=f"inference/pairs/{fname}", task_name=f"gp_{pair_ch_names}")
+            task = Task.init(project_name=f"inference/pairs/{fname}", task_name=f"gp_{pair_ch_names}", reuse_last_task_id=False)
             task.connect(hparams)
 
             # set rng seed
@@ -99,7 +96,7 @@ if __name__ == '__main__':
                 every_n_epochs=1000
             )
 
-            trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=1, gpus=1, profiler=None,
+            trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=200, gpus=1, profiler=None,
                               callbacks=[checkpoint_callback], fast_dev_run=False)
             trainer.fit(model, train_dataloader)
 

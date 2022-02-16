@@ -859,7 +859,7 @@ class EEGAccessor:
 
     @property
     def sfreq(self):
-        return len(self._obj)/max(self._obj['time'])
+        return len(self._obj) / max(self._obj['time'])
 
     def plot(self):
         # plot as multichannel EEG timeseries
@@ -875,20 +875,22 @@ class EEGAccessor:
         # Number of samples
         N = len(self._obj)
 
-        yf = fft(self._obj[self.ch_names[0]].to_numpy())[:N//2]
-        xf = fftfreq(N, 1 / self.sfreq)[:N//2]
+        yf = fft(self._obj[self.ch_names[0]].to_numpy())[:N // 2]
+        xf = fftfreq(N, 1 / self.sfreq)[:N // 2]
 
         plt.plot(xf, np.abs(yf))
         plt.show()
 
 
 class DogDataset:
-    def __init__(self, dataset_dir):
+    def __init__(self, dataset_dir, include_test: bool = False):
         self.dataset_dir = dataset_dir
+        self.include_test = include_test
         self.samples_df = self.normalized_samples()
         self.ch_names = [col for col in self.samples_df.columns if 'Ecog' in col]
 
     def normalized_samples(self) -> DataFrame:
+        print(f"loading samples")
         all_samples = list(self.samples_generator())
         samples_df = pd.concat(all_samples)
         data_cols = [col for col in samples_df.columns if 'Ecog' in col]
@@ -904,7 +906,10 @@ class DogDataset:
                 elif 'ictal' in name:
                     label_desc = 'ictal'
                 elif 'test' in name:
-                    continue
+                    if self.include_test:
+                        label_desc = 'test'
+                    else:
+                        continue
                 else:
                     raise ValueError("unknown label desc")
                 fpath = os.path.join(root, name)
@@ -920,15 +925,15 @@ class DogDataset:
                 sample_df["fname"] = name
                 yield sample_df
 
-    def sample_clip(self, num_channels: int, label_desc: Optional[str] = None):
+    def sample_clip(self, num_channels: int, label_desc: Optional[str] = None, return_fname: Optional[bool] = False):
         """
         sample a single clip from samples_df
         Args:
+            return_fname:
             num_channels:
             label_desc:
 
         Returns:
-
         """
         samples_df = self.samples_df
         fnames = list(samples_df.loc[
@@ -949,7 +954,46 @@ class DogDataset:
         train_x = Tensor(clip_df['time'].values)
         train_y = Tensor(clip_df[selected_ch_group].values)
 
-        return train_x.contiguous(), train_y.contiguous()
+        if return_fname:
+            return train_x.contiguous(), train_y.contiguous(), selected_fname
+        else:
+            return train_x.contiguous(), train_y.contiguous()
+
+    def clips_generator(self, num_channels: int, label_desc: Optional[str] = None,
+                        return_fname: Optional[bool] = False):
+        """
+        yield all clips from samples_df with label matching label_desc
+        Args:
+            return_fname:
+            num_channels:
+            label_desc:
+
+        Returns:
+        """
+        samples_df = self.samples_df
+        fnames = list(samples_df.loc[
+                          samples_df.apply(
+                              lambda row: row['label_desc'] == label_desc if isinstance(label_desc, str) else True,
+                              axis=1)].groupby("fname").groups.keys())
+
+        # split channel names into sublists of length num_channels
+        channel_groups = [self.ch_names[x:x + num_channels] for x in
+                          range(0, len(self.ch_names) - len(self.ch_names) % num_channels, num_channels)]
+
+        # iterate over fnames
+        for selected_fname in fnames:
+            # iterate over channel groups
+            for selected_ch_group in channel_groups:
+                # select relevant clip
+                clip_df = samples_df.loc[samples_df['fname'] == selected_fname]
+                train_x = Tensor(clip_df['time'].values)
+                train_y = Tensor(clip_df[selected_ch_group].values)
+                # yield clip
+                if return_fname:
+                    yield train_x.contiguous(), train_y.contiguous(), selected_fname
+                else:
+                    yield train_x.contiguous(), train_y.contiguous()
+
 
 
 #
