@@ -17,7 +17,7 @@ if __name__ == '__main__':
                'n_epochs': 1000}
 
     n_draws = 8  # number of samples to draw for plotting
-    dataset_dir = r"C:\Users\noam\Repositories\noamsgl\msc\data\seizure-detection\Dog_1"
+    dataset_dir = f"{config['PATH'][config['RAW_MACHINE']]['DATA_DIR']}/seizure-detection/Dog_1"
     dataset = DogDataset(dataset_dir)
     samples_df = dataset.samples_df
 
@@ -89,7 +89,7 @@ if __name__ == '__main__':
             # define trainer and fit model
             checkpoint_callback = ModelCheckpoint(
                 monitor="train_loss",
-                dirpath=f"{config['PATH']['LOCAL']['LIGHTNING_LOGS']}/{fname[:-4]}/{pair_ch_names[-4:]}",
+                dirpath=f"{config['PATH'][config['RESULTS_MACHINE']]['LIGHTNING_LOGS']}/{fname[:-4]}/{pair_ch_names[-4:]}",
                 filename="gp_inference-{epoch:03d}-{train_loss:.2f}",
                 save_top_k=1,
                 mode="min",
