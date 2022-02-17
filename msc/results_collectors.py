@@ -2,9 +2,9 @@
 Noam Siegel
 A set of classes to collect results from ClearML server
 """
+from typing import Optional
 
 import pandas as pd
-
 from clearml.backend_api import Session
 from clearml.backend_api.services import tasks, projects
 
@@ -17,7 +17,8 @@ class GPResultsCollector:
     2) parse results into results_df
     """
 
-    def __init__(self, requested_project_name="inference", requested_params=None, n_pages=5):
+    def __init__(self, requested_project_name="inference/pairs/Dog_1", requested_params=None,
+                 n_pages_limit: Optional[int] = 8):
         """
 
         Args:
@@ -40,12 +41,22 @@ class GPResultsCollector:
 
         # get all the tasks
         tasks_list = []
-        for i in range(n_pages):
-            print(f"getting page={i + 1}/{n_pages}")
-            tasks_res = session.send(tasks.GetAllRequest(project=project_ids, page_size=500, page=i))
-            tasks_list += tasks_res.response_data['tasks']
+        for i in range(n_pages_limit):
+            print(f"getting page={i + 1}/{n_pages_limit}")
+            tasks_res = session.send(
+                tasks.GetAllRequest(project=project_ids,
+                                    only_fields=['id', 'project', 'name', 'status', 'completed', 'last_metrics'],
+                                    page_size=500, page=i))
+            new_tasks_list = tasks_res.response_data['tasks']
+            tasks_list += new_tasks_list
+            if len(new_tasks_list) < 500:
+                print(f"last page size was {len(new_tasks_list)} which is l.e. 500. finished getting tasks.")
+                break
 
         results_df = pd.DataFrame(tasks_list)
+        # parse datetime columns
+        results_df['completed'] = pd.to_datetime(results_df['completed'])
+        # parse last_metrics column
         results_df = self.parse_last_metrics(results_df, requested_params)
 
         results_df = pd.merge(results_df, projects_df[['id', 'name', 'label_desc']], left_on='project', right_on='id',
@@ -55,10 +66,10 @@ class GPResultsCollector:
         results_df = results_df.loc[results_df['status'] == 'completed']
 
         # drop NaNs
-        results_df = results_df.dropna(subset=requested_params).reset_index(drop=True)
+        results_df = results_df.dropna(subset=requested_params, how='all').reset_index(drop=True)
 
         # parse file names and channel names
-        if requested_project_name == "inference/pairs":
+        if "inference/pairs" in requested_project_name:
             results_df["fname"] = results_df["name_project"].apply(lambda name_project: name_project.split('/')[-1])
             results_df["ch_names"] = results_df["name_task"].apply(
                 lambda name_task: [name_task.split("'")[i] for i in [1, 3]])
