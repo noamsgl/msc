@@ -8,6 +8,8 @@ import pandas as pd
 from clearml.backend_api import Session
 from clearml.backend_api.services import tasks, projects
 
+from msc.canine_db_utils import get_label_desc_from_fname
+
 
 class GPResultsCollector:
     """
@@ -34,8 +36,7 @@ class GPResultsCollector:
         # concat all results to dataframe
         projects_df = pd.DataFrame([p.to_dict() for p in projects_res.response.projects])
         # add label_desc based on file name
-        projects_df["label_desc"] = projects_df["name"].apply(
-            lambda name: 'interictal' if 'interictal' in name else 'ictal')
+        projects_df["label_desc"] = projects_df["name"].apply(get_label_desc_from_fname)
 
         # get all the tasks
         tasks_list = []
@@ -56,7 +57,7 @@ class GPResultsCollector:
         # drop NaNs
         results_df = results_df.dropna(subset=requested_params).reset_index(drop=True)
 
-        #
+        # parse file names and channel names
         if requested_project_name == "inference/pairs":
             results_df["fname"] = results_df["name_project"].apply(lambda name_project: name_project.split('/')[-1])
             results_df["ch_names"] = results_df["name_task"].apply(

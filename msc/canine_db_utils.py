@@ -27,3 +27,15 @@ def get_onsets(dog_num: int):
                       range(len(annotations))]
 
     return seizure_onsets
+
+
+def get_label_desc_from_fname(fname: str):
+    if 'interictal' in fname:
+        label_desc = 'interictal'
+    elif 'ictal' in fname:
+        label_desc = 'ictal'
+    elif 'test' in fname:
+        label_desc = 'test'
+    else:
+        raise ValueError("unknown label desc")
+    return label_desc

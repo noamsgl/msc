@@ -23,6 +23,7 @@ from msc import config
 # from msc.data_utils import get_preictal_intervals, get_interictal_intervals
 # from msc.data_utils.features import extract_feature_from_numpy
 # from msc.data_utils.load import add_raws_to_intervals_df, PicksOptions, get_time_as_str
+from msc.canine_db_utils import get_label_desc_from_fname
 from msc.data_utils import PicksOptions, get_time_as_str, add_raws_to_intervals_df, get_preictal_intervals, \
     get_interictal_intervals, extract_feature_from_numpy
 from msc.matlab_to_numpy import loadmat
@@ -901,20 +902,18 @@ class DogDataset:
     def samples_generator(self):
         for root, dirs, files in os.walk(self.dataset_dir, topdown=False):
             for name in files:
-                if 'interictal' in name:
-                    label_desc = 'interictal'
-                elif 'ictal' in name:
-                    label_desc = 'ictal'
-                elif 'test' in name:
-                    if self.include_test:
-                        label_desc = 'test'
-                    else:
-                        continue
-                else:
-                    raise ValueError("unknown label desc")
+                # get label_desc
+                label_desc = get_label_desc_from_fname(name)
+
+                if label_desc == 'test' and not self.include_test:
+                    continue
+
+                # load data
                 fpath = os.path.join(root, name)
                 mat_content = loadmat(fpath)
                 data = mat_content['data']
+
+                # build Pandas DataFrame
                 channel_names = list(mat_content['channels'].values())
                 freq = mat_content['freq']
                 T = data.shape[-1] / freq
