@@ -14,7 +14,7 @@ The repository structure consists of:
 * [scripts/density_estimation/](scripts/density_estimation/): fitting density estimators to embeddings
 * [scripts/eda/](scripts/eda/): exploratory data analysis
 * [scripts/generate/](scripts/generate/): generating synthetic EEG data
-* [scripts/inference/](scripts/inference/): conditioning time-series models on data
+* [scripts/embedding/](scripts/embedding/): embedding EEG in parametric representations
 * [scripts/psp/](scripts/psp/): scripts for the final project in physiological signal processing
 * [scripts/reports/](scripts/reports/): scripts for dumping results to PDF reports
 * [settings/](settings/): configuration file
