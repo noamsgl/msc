@@ -862,16 +862,20 @@ class EEGAccessor:
     def sfreq(self):
         return len(self._obj) / max(self._obj['time'])
 
-    def plot(self):
+    def plot(self, ax=None):
+        if ax is None:
+            ax = plt.gca()
         # plot as multichannel EEG timeseries
         for i, ch_name in enumerate(self.ch_names):
-            plt.plot(self._obj['time'], self._obj[ch_name].to_numpy() + i)
-        plt.xlabel("time (s)")
-        plt.ylabel("EEG with offsets")
-        plt.show()
+            ax.plot(self._obj['time'], self._obj[ch_name].to_numpy() + i)
+        ax.set_xlabel("time (s)")
+        ax.set_ylabel("EEG with offsets")
+        return ax
 
-    def plot_fft(self):
+    def plot_fft(self, ax=None):
         # todo: slice xf from 0 onwards
+        if ax is None:
+            ax = plt.gca()
         from scipy.fft import fft, fftfreq
         # Number of samples
         N = len(self._obj)
@@ -879,8 +883,8 @@ class EEGAccessor:
         yf = fft(self._obj[self.ch_names[0]].to_numpy())[:N // 2]
         xf = fftfreq(N, 1 / self.sfreq)[:N // 2]
 
-        plt.plot(xf, np.abs(yf))
-        plt.show()
+        ax.plot(xf, np.abs(yf))
+        return ax
 
 
 class DogDataset:
@@ -992,7 +996,6 @@ class DogDataset:
                     yield train_x.contiguous(), train_y.contiguous(), selected_fname
                 else:
                     yield train_x.contiguous(), train_y.contiguous()
-
 
 
 #

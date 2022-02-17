@@ -2,6 +2,7 @@
 Noam Siegel
 A set of classes to collect results from ClearML server
 """
+import datetime
 from typing import Optional
 
 import pandas as pd
@@ -18,7 +19,7 @@ class GPResultsCollector:
     """
 
     def __init__(self, requested_project_name="inference/pairs/Dog_1", requested_params=None,
-                 n_pages_limit: Optional[int] = 8):
+                 n_pages_limit: Optional[int] = 8, split_version_by_date : Optional = None):
         """
 
         Args:
@@ -27,6 +28,8 @@ class GPResultsCollector:
             n_pages: number of ClearML results pages to request. Each page contains 500 results.
         """
         assert requested_params is not None, "error: requested params must be nonempty iterable of param names"
+        self.params = requested_params
+
         # create an authenticated session
         session = Session()
 
@@ -74,8 +77,24 @@ class GPResultsCollector:
             results_df["ch_names"] = results_df["name_task"].apply(
                 lambda name_task: [name_task.split("'")[i] for i in [1, 3]])
 
+        # split version by date
+        if split_version_by_date is not None:
+            assert isinstance(split_version_by_date, datetime.datetime)
+            results_df['version'] = results_df['completed'].apply(
+                lambda dt: 0 if dt.replace(tzinfo=None) < split_version_by_date else 1)
+
+            # merge version 0 params into version 1 params
+            results_df.loc[results_df[
+                               'covar_module.data_covar_module.raw_lengthscale'].isna(), 'covar_module.data_covar_module.raw_lengthscale'] = \
+                results_df['covar_module.data_covar_module.base_kernel.raw_lengthscale']
+            results_df = results_df.drop(columns=['covar_module.data_covar_module.base_kernel.raw_lengthscale'])
+
+            # update self.requested_params
+            self.params.remove('covar_module.data_covar_module.base_kernel.raw_lengthscale')
+
         # save to self
         self.results_df = results_df
+
 
     @staticmethod
     def parse_last_metrics(results_df, requested_params):
