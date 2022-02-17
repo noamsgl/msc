@@ -62,8 +62,11 @@ def plot_seizure_intervals_histogram(onsets, patient_name: str, ax=None):
     intervals = np.array([(onsets[i + 1] - onsets[i]).total_seconds() for i in range(len(onsets) - 1)])
     plt.title(f"Inter-seizure Intervals - {patient_name}")
     _, bins = np.histogram(np.log10(intervals + 1))
-    plt.hist(intervals, bins=np.logspace(np.log10(min(intervals)), np.log10(max(intervals)), 50))
+    plt.hist(intervals, bins=np.logspace(np.log10(min(intervals)), np.log10(max(intervals)), 50), label="inter-seizure intervals")
+    plt.vlines(np.mean(intervals), 0, 10, colors='r', label='mean')
+    plt.vlines(np.var(intervals), 0, 10, colors='orange', label='variance')
     plt.gca().set_xscale("log")
     plt.xlabel("time (s)")
     plt.ylabel("frequency")
+    plt.legend()
 
