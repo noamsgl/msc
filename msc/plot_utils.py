@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from sklearn.manifold import TSNE
 
 
 def plot_sample(times, sample) -> Figure:
@@ -70,3 +71,18 @@ def plot_seizure_intervals_histogram(onsets, patient_name: str, ax=None):
     plt.ylabel("frequency")
     plt.legend()
 
+
+def add_tsne_to_df(df, data_columns, random_state=42):
+    # get data values
+    X = df.loc[:, data_columns].to_numpy()
+
+    # calculate t-SNE values of parameters
+    tsne = TSNE(n_components=2, init='pca', learning_rate='auto', random_state=random_state)
+    tsne_results = tsne.fit_transform(X)
+
+    # add t-SNE results to df
+    df.loc[:, 'tsne-2d-one'] = tsne_results[:, 0]
+    df.loc[:, 'tsne-2d-two'] = tsne_results[:, 1]
+
+    # return
+    return df

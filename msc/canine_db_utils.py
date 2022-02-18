@@ -37,5 +37,5 @@ def get_label_desc_from_fname(fname: str):
     elif 'test' in fname:
         label_desc = 'test'
     else:
-        raise ValueError("unknown label desc")
+        raise ValueError(f"unknown label description, {fname=}")
     return label_desc

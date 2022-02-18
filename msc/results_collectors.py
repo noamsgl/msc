@@ -47,19 +47,22 @@ class GPResultsCollector:
                     all_result_dfs.append(result_df)
         results_df = pd.concat(all_result_dfs, axis=1).transpose().reset_index(drop=True)
         results_df = results_df.loc[:, requested_params + ['ch_names', 'clip_name']]
+        results_df["label_desc"] = "test"
         return cls(requested_params, results_df)
 
     @classmethod
     def from_clearml(cls, requested_project_name="inference/pairs/Dog_1", requested_params=None,
-                     n_pages_limit: Optional[int] = 8, split_version_by_date: Optional = None):
+                     n_pages_limit: Optional[int] = 8,
+                     split_version_by_date: Optional = datetime.datetime(year=2022, month=2, day=10)):
         """
             1) get Gaussian Process related requested_params from ClearML
             2) parse results into results_df
 
             Args:
+                split_version_by_date:
+                n_pages_limit: maximal number of ClearML results pages to request. Each page contains 500 results.
                 requested_project_name:
                 requested_params:
-                n_pages: number of ClearML results pages to request. Each page contains 500 results.
         """
         assert requested_params is not None, "error: requested params must be nonempty iterable of param names"
 
@@ -123,10 +126,10 @@ class GPResultsCollector:
             results_df = results_df.drop(columns=['covar_module.data_covar_module.base_kernel.raw_lengthscale'])
 
             # update self.requested_params
-            requested_params.params.remove('covar_module.data_covar_module.base_kernel.raw_lengthscale')
+            requested_params.remove('covar_module.data_covar_module.base_kernel.raw_lengthscale')
 
         # save to self
-        return cls(requested_params, results_df)
+        return cls(requested_params, results_df.copy())
 
     @staticmethod
     def parse_last_metrics(results_df, requested_params):
