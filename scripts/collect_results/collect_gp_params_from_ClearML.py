@@ -13,5 +13,5 @@ if __name__ == '__main__':
                         'covar_module.task_covar_module.raw_var[1]']
 
     split_date = datetime.datetime(year=2022, month=2, day=10)
-    results_df = GPResultsCollector(requested_project_name, requested_params,
+    results_df = GPResultsCollector.from_clearml(requested_project_name, requested_params,
                                     split_version_by_date=split_date).results_df

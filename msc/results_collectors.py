@@ -3,32 +3,65 @@ Noam Siegel
 A set of classes to collect results from ClearML server
 """
 import datetime
+import os
 from typing import Optional
 
 import pandas as pd
 from clearml.backend_api import Session
 from clearml.backend_api.services import tasks, projects
+from pandas import DataFrame
 
 from msc.canine_db_utils import get_label_desc_from_fname
 
 
 class GPResultsCollector:
-    """
-    1) get Gaussian Process related requested_params from ClearML
-    2) parse results into results_df
-    """
+    def __init__(self, params=None, results_df: DataFrame = None):
+        self.params = params
+        self.results_df = results_df
 
-    def __init__(self, requested_project_name="inference/pairs/Dog_1", requested_params=None,
-                 n_pages_limit: Optional[int] = 8, split_version_by_date : Optional = None):
+    @classmethod
+    def from_csv_logs(cls, logs_dir, requested_params):
         """
-
+        1) get Gaussian Process related requested_params from logs_dir
+        2) parse results into results_df
         Args:
-            requested_project_name:
+            logs_dir:
             requested_params:
-            n_pages: number of ClearML results pages to request. Each page contains 500 results.
+
+        Returns:
+
+        """
+        all_result_dfs = []
+        for root, dirs, files in os.walk(logs_dir, topdown=False):
+            for fname in files:
+                if fname == 'metrics.csv':
+                    path_components = root.split(os.sep)
+                    version = path_components[-1]
+                    experiment_name = path_components[-2]
+                    ch_names = path_components[-3]
+                    clip_name = path_components[-4]
+                    metrics_df = pd.read_csv(os.path.join(root, fname))
+                    result_df = metrics_df.copy().loc[metrics_df['step'].idxmax()]
+                    result_df.loc['ch_names'] = ch_names
+                    result_df.loc['clip_name'] = clip_name
+                    all_result_dfs.append(result_df)
+        results_df = pd.concat(all_result_dfs, axis=1).transpose().reset_index(drop=True)
+        results_df = results_df.loc[:, requested_params + ['ch_names', 'clip_name']]
+        return cls(requested_params, results_df)
+
+    @classmethod
+    def from_clearml(cls, requested_project_name="inference/pairs/Dog_1", requested_params=None,
+                     n_pages_limit: Optional[int] = 8, split_version_by_date: Optional = None):
+        """
+            1) get Gaussian Process related requested_params from ClearML
+            2) parse results into results_df
+
+            Args:
+                requested_project_name:
+                requested_params:
+                n_pages: number of ClearML results pages to request. Each page contains 500 results.
         """
         assert requested_params is not None, "error: requested params must be nonempty iterable of param names"
-        self.params = requested_params
 
         # create an authenticated session
         session = Session()
@@ -60,7 +93,7 @@ class GPResultsCollector:
         # parse datetime columns
         results_df['completed'] = pd.to_datetime(results_df['completed'])
         # parse last_metrics column
-        results_df = self.parse_last_metrics(results_df, requested_params)
+        results_df = cls.parse_last_metrics(results_df, requested_params)
 
         results_df = pd.merge(results_df, projects_df[['id', 'name', 'label_desc']], left_on='project', right_on='id',
                               suffixes=('_task', '_project'))
@@ -90,11 +123,10 @@ class GPResultsCollector:
             results_df = results_df.drop(columns=['covar_module.data_covar_module.base_kernel.raw_lengthscale'])
 
             # update self.requested_params
-            self.params.remove('covar_module.data_covar_module.base_kernel.raw_lengthscale')
+            requested_params.params.remove('covar_module.data_covar_module.base_kernel.raw_lengthscale')
 
         # save to self
-        self.results_df = results_df
-
+        return cls(requested_params, results_df)
 
     @staticmethod
     def parse_last_metrics(results_df, requested_params):

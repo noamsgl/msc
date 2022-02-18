@@ -17,7 +17,7 @@ if __name__ == '__main__':
     task = Task.init(project_name=f"analyze", task_name=f"gp_matern_params")
     requested_params = ['covar_module.raw_outputscale', 'covar_module.base_kernel.raw_lengthscale']
 
-    results_df = GPResultsCollector(requested_params).results_df
+    results_df = GPResultsCollector.from_clearml(requested_params).results_df
 
     logger = task.get_logger()
     logger.report_table("results_df", "Results Table", table_plot=results_df)

@@ -21,7 +21,7 @@ if __name__ == '__main__':
     # get results_df
     RELOAD = False  # change this to True in order to download updated results from ClearML servers
     if RELOAD:
-        results_df = GPResultsCollector(requested_params).results_df
+        results_df = GPResultsCollector.from_clearml(requested_params).results_df
     else:
         results_fpath = r"C:\Users\noam\Repositories\noamsgl\msc\results\params\results_gp_dog1_params.csv"
         results_df = pd.read_csv(results_fpath)
