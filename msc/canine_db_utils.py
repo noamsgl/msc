@@ -6,6 +6,15 @@ from typing import List, OrderedDict
 import xmltodict
 
 
+def get_first_create_time(data_dict: dict):
+    annotations: List[OrderedDict] = data_dict['annotations']['annotation']
+    create_times = [annotations[i].get('@createTime') for i in range(len(annotations))]
+    create_time = create_times[0]
+    # parse string to datetime
+    create_time = datetime.datetime.strptime(create_time, "%Y-%m-%dT%H:%M:%SZ")
+    return create_time
+
+
 def get_onsets(dog_num: int):
     # xml_path = r"C:\raw_data\canine_db\packages\Dog 1\annotations.xml"
     # xml_path = r"C:\raw_data\canine_db\packages\Dog 2\annotations.xml"
@@ -19,8 +28,9 @@ def get_onsets(dog_num: int):
 
     data_dict = dict(xmltodict.parse(xmlstr))
 
-    # todo: get real record_start
-    record_start = datetime.datetime(year=2014, month=1, day=1)
+    # we assume the first create time is the recording start time (in fact all create times should be equal)
+    record_start = get_first_create_time(data_dict)
+    # record_start = datetime.datetime(year=2014, month=1, day=1)
 
     annotations: List[OrderedDict] = data_dict['annotations']['annotation']
     seizure_onsets = [record_start + timedelta(microseconds=int(annotations[i].get('@startOffsetUsecs'))) for i in
