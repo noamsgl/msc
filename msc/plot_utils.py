@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 
@@ -63,7 +64,8 @@ def plot_seizure_intervals_histogram(onsets, patient_name: str, ax=None):
     intervals = np.array([(onsets[i + 1] - onsets[i]).total_seconds() for i in range(len(onsets) - 1)])
     plt.title(f"Inter-seizure Intervals - {patient_name}")
     _, bins = np.histogram(np.log10(intervals + 1))
-    plt.hist(intervals, bins=np.logspace(np.log10(min(intervals)), np.log10(max(intervals)), 50), label="inter-seizure intervals")
+    plt.hist(intervals, bins=np.logspace(np.log10(min(intervals)), np.log10(max(intervals)), 50),
+             label="inter-seizure intervals")
     plt.vlines(np.mean(intervals), 0, 10, colors='r', label='mean')
     plt.vlines(np.var(intervals), 0, 10, colors='orange', label='variance')
     plt.gca().set_xscale("log")
@@ -72,17 +74,31 @@ def plot_seizure_intervals_histogram(onsets, patient_name: str, ax=None):
     plt.legend()
 
 
-def add_tsne_to_df(df, data_columns, random_state=42):
-    # get data values
-    X = df.loc[:, data_columns].to_numpy()
-
+def add_tsne_to_df(df, data_columns, label_desc=None, random_state=42, **kwargs):
+    row_indexer = slice(None) if label_desc is None else df['label_desc'] == label_desc
+    X = df.loc[row_indexer, data_columns].to_numpy()
     # calculate t-SNE values of parameters
-    tsne = TSNE(n_components=2, init='pca', learning_rate='auto', random_state=random_state)
+    tsne = TSNE(n_components=2, init='pca', learning_rate='auto', random_state=random_state, **kwargs)
     tsne_results = tsne.fit_transform(X)
 
     # add t-SNE results to df
-    df.loc[:, 'tsne-2d-one'] = tsne_results[:, 0]
-    df.loc[:, 'tsne-2d-two'] = tsne_results[:, 1]
+    df.loc[row_indexer, 'tsne-2d-one'] = tsne_results[:, 0]
+    df.loc[row_indexer, 'tsne-2d-two'] = tsne_results[:, 1]
+
+    # return
+    return df
+
+
+def add_pca_to_df(df, data_columns, label_desc=None):
+    row_indexer = slice(None) if label_desc is None else df['label_desc'] == label_desc
+    X = df.loc[row_indexer, data_columns].to_numpy()
+    # calculate PCA values of parameters
+    pca = PCA(n_components=2)
+    pca_results = pca.fit_transform(X)
+
+    # add t-SNE results to df
+    df.loc[row_indexer, 'pca-2d-one'] = pca_results[:, 0]
+    df.loc[row_indexer, 'pca-2d-two'] = pca_results[:, 1]
 
     # return
     return df

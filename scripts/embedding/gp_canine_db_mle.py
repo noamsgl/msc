@@ -1,3 +1,4 @@
+import os
 import sys
 
 import matplotlib.pyplot as plt
@@ -14,13 +15,14 @@ from msc.models import SingleSampleEEGGPModel
 if __name__ == '__main__':
     # override parameters with provided dictionary
     hparams = {'random_seed': 42,
-               'num_channels': 1,
-               'selected_label_desc': 'test',
+               'num_channels': 2,
+               'selected_label_desc': 'ictal',
                'learning_rate': 1e-2,
                'n_epochs': 1000,
                'version': '0.1.0',
                'enable_progress_bar': False,
-               'fast_dev_run': False}
+               'fast_dev_run': True,
+               'graphic_verbose': False}
 
     n_draws = 8  # number of samples to draw for plotting
     dataset_dir = f"{config['PATH'][config['RAW_MACHINE']]['DATA_DIR']}/seizure-detection/Dog_1"
@@ -77,22 +79,24 @@ if __name__ == '__main__':
             train_y = Tensor(group[ch_names].values)
             train_dataloader = DataLoader(SingleSampleDataset(train_x, train_y), num_workers=0)
 
-            # plot data sample
-            plt.plot(train_x, train_y)
-            plt.legend(labels=ch_names)
-            plt.xlabel('time (s)')
-            plt.title('Data Sample')
-            plt.show()
+            if hparams['graphic_verbose']:
+                # plot data sample
+                plt.plot(train_x, train_y)
+                plt.legend(labels=ch_names)
+                plt.xlabel('time (s)')
+                plt.title('Data Sample')
+                plt.show()
 
             # initialize PyTorch Lightning model
             model = SingleSampleEEGGPModel(hparams, train_x, train_y)
 
-            # plot prior samples
-            for i in range(n_draws):
-                plt.plot(train_x, model(train_x).sample())
-            plt.xlabel('time (s)')
-            plt.title('Prior')
-            plt.show()
+            if hparams['graphic_verbose']:
+                # plot prior samples
+                for i in range(n_draws):
+                    plt.plot(train_x, model(train_x).sample())
+                plt.xlabel('time (s)')
+                plt.title('Prior')
+                plt.show()
 
             # define trainer and fit model
             logger_dirpath = f"{config['PATH'][config['RESULTS_MACHINE']]['LIGHTNING_LOGS']}/{fname[:-4]}/{ch_names}"
@@ -106,17 +110,23 @@ if __name__ == '__main__':
             )
             # todo: add early stopping
             logger = CSVLogger(save_dir=logger_dirpath, name="gp_embedding", version=hparams['version'])
+            if os.path.exists(logger.log_dir) and [file for file in os.listdir(logger_dirpath) if not '.nfs' in file]:
+                print(f"logger directory {logger.log_dir} exists and is not empty. Skipping this training.")
+                continue
+
             trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=200, gpus=1, profiler=None,
-                              callbacks=[checkpoint_callback], fast_dev_run=hparams['fast_dev_run'], logger=logger,
+                              callbacks=[checkpoint_callback], fast_dev_run=False, logger=logger,
                               deterministic=True, enable_progress_bar=hparams['enable_progress_bar'])
+
             trainer.fit(model, train_dataloader)
 
-            # plot posterior samples
-            for i in range(n_draws):
-                plt.plot(train_x, model(train_x).sample())
-            plt.xlabel('time (s)')
-            plt.title('Posterior')
-            plt.show()
+            if hparams['graphic_verbose']:
+                # plot posterior samples
+                for i in range(n_draws):
+                    plt.plot(train_x, model(train_x).sample())
+                plt.xlabel('time (s)')
+                plt.title('Posterior')
+                plt.show()
 
             if hparams['fast_dev_run']:
                 sys.exit(0)

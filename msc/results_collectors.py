@@ -10,6 +10,7 @@ import pandas as pd
 from clearml.backend_api import Session
 from clearml.backend_api.services import tasks, projects
 from pandas import DataFrame
+from tqdm import tqdm
 
 from msc.canine_db_utils import get_label_desc_from_fname
 
@@ -20,7 +21,7 @@ class GPResultsCollector:
         self.results_df = results_df
 
     @classmethod
-    def from_csv_logs(cls, logs_dir, requested_params):
+    def from_csv_logs(cls, logs_dir):
         """
         1) get Gaussian Process related requested_params from logs_dir
         2) parse results into results_df
@@ -32,7 +33,7 @@ class GPResultsCollector:
 
         """
         all_result_dfs = []
-        for root, dirs, files in os.walk(logs_dir, topdown=False):
+        for root, dirs, files in tqdm(list(os.walk(logs_dir, topdown=False))):
             for fname in files:
                 if fname == 'metrics.csv':
                     path_components = root.split(os.sep)
@@ -44,11 +45,12 @@ class GPResultsCollector:
                     result_df = metrics_df.copy().loc[metrics_df['step'].idxmax()]
                     result_df.loc['ch_names'] = ch_names
                     result_df.loc['clip_name'] = clip_name
+                    result_df.loc['label_desc'] = get_label_desc_from_fname(clip_name)
+                    result_df.loc['version'] = version
+                    result_df.loc['num_channels'] = len(ch_names.split(','))
                     all_result_dfs.append(result_df)
         results_df = pd.concat(all_result_dfs, axis=1).transpose().reset_index(drop=True)
-        results_df = results_df.loc[:, requested_params + ['ch_names', 'clip_name']]
-        results_df["label_desc"] = "test"
-        return cls(requested_params, results_df)
+        return cls(results_df=results_df)
 
     @classmethod
     def from_clearml(cls, requested_project_name="inference/pairs/Dog_1", requested_params=None,
