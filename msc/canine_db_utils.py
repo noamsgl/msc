@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 from datetime import timedelta
 from typing import List, OrderedDict
 
+import torch
 import xmltodict
 
 
@@ -13,6 +14,21 @@ def get_first_create_time(data_dict: dict):
     # parse string to datetime
     create_time = datetime.datetime.strptime(create_time, "%Y-%m-%dT%H:%M:%SZ")
     return create_time
+
+
+def get_record_start(dog_num: int):
+    xml_path = fr"C:\raw_data\canine_db\packages\Dog {dog_num}\annotations.xml"
+    tree = ET.parse(xml_path)
+
+    xml_data = tree.getroot()
+
+    xmlstr = ET.tostring(xml_data, encoding='utf8', method='xml')
+
+    data_dict = dict(xmltodict.parse(xmlstr))
+
+    # we assume the first create time is the recording start time (in fact all create times should be equal)
+    record_start = get_first_create_time(data_dict)
+    return record_start
 
 
 def get_onsets(dog_num: int):
@@ -29,7 +45,7 @@ def get_onsets(dog_num: int):
     data_dict = dict(xmltodict.parse(xmlstr))
 
     # we assume the first create time is the recording start time (in fact all create times should be equal)
-    record_start = get_first_create_time(data_dict)
+    record_start = get_record_start(dog_num=dog_num)
     # record_start = datetime.datetime(year=2014, month=1, day=1)
 
     annotations: List[OrderedDict] = data_dict['annotations']['annotation']
@@ -49,3 +65,17 @@ def get_label_desc_from_fname(fname: str):
     else:
         raise ValueError(f"unknown label description, {fname=}")
     return label_desc
+
+
+def get_ipp_training_data(dog_num, time_step):
+    record_start = get_record_start(dog_num)
+
+    onset_datetimes = get_onsets(dog_num)
+
+    onsets_minutes = torch.Tensor(
+        [(onset - record_start).total_seconds() / time_step for onset in onset_datetimes])
+
+    train_x = torch.arange(0, max(onsets_minutes))
+    train_y = torch.zeros_like(train_x).index_fill_(0, onsets_minutes.long(), 1)
+
+    return train_x, train_y
