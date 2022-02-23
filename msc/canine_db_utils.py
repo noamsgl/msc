@@ -15,6 +15,21 @@ def get_first_create_time(data_dict: dict):
     return create_time
 
 
+def get_record_start(dog_num: int):
+    xml_path = fr"C:\raw_data\canine_db\packages\Dog {dog_num}\annotations.xml"
+    tree = ET.parse(xml_path)
+
+    xml_data = tree.getroot()
+
+    xmlstr = ET.tostring(xml_data, encoding='utf8', method='xml')
+
+    data_dict = dict(xmltodict.parse(xmlstr))
+
+    # we assume the first create time is the recording start time (in fact all create times should be equal)
+    record_start = get_first_create_time(data_dict)
+    return record_start
+
+
 def get_onsets(dog_num: int):
     # xml_path = r"C:\raw_data\canine_db\packages\Dog 1\annotations.xml"
     # xml_path = r"C:\raw_data\canine_db\packages\Dog 2\annotations.xml"
@@ -29,7 +44,7 @@ def get_onsets(dog_num: int):
     data_dict = dict(xmltodict.parse(xmlstr))
 
     # we assume the first create time is the recording start time (in fact all create times should be equal)
-    record_start = get_first_create_time(data_dict)
+    record_start = get_record_start(dog_num=dog_num)
     # record_start = datetime.datetime(year=2014, month=1, day=1)
 
     annotations: List[OrderedDict] = data_dict['annotations']['annotation']
