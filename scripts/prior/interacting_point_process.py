@@ -33,8 +33,8 @@ if __name__ == '__main__':
     hparams = {'random_seed': 42,
                'learning_rate': 1e-2,
                'n_epochs': 800,
-               'time_step': 3600 * 2 * 2,
-               'version': '0.1.0',
+               'time_step': 3600 * 2,
+               'version': '0.1.1',
                'enable_progress_bar': True,
                'fast_dev_run': False,
                'graphic_verbose': True}
