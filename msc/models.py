@@ -97,12 +97,13 @@ class SingleSampleEEGGPModel(pl.LightningModule):
 
 
 class HawkesProcessGP(gpytorch.models.ApproximateGP):
-    def __init__(self, train_x):
+    def __init__(self, train_x, likelihood):
         variational_distribution = CholeskyVariationalDistribution(train_x.size(0))
         variational_strategy = UnwhitenedVariationalStrategy(
             self, train_x, variational_distribution, learn_inducing_locations=False
         )
         super(HawkesProcessGP, self).__init__(variational_strategy)
+        self.likelihood = likelihood
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.CosineKernel() + gpytorch.kernels.ScaleKernel(
             gpytorch.kernels.MaternKernel(3 / 2))
@@ -119,11 +120,11 @@ class InteractingPointProcessGPModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters(hparams)
 
-        self.likelihood = gpytorch.likelihoods.BernoulliLikelihood()
-        self.gpmodel = HawkesProcessGP(train_x)
+        likelihood = gpytorch.likelihoods.BernoulliLikelihood()
+        self.gpmodel = HawkesProcessGP(train_x, likelihood)
 
         # "Loss" for GPs - marginal log likelihood
-        self.mll = gpytorch.mlls.VariationalELBO(self.likelihood, self.gpmodel, train_y.numel())
+        self.mll = gpytorch.mlls.VariationalELBO(likelihood, self.gpmodel, train_y.numel())
 
     def forward(self, x):
         # compute prediction
