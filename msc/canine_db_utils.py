@@ -67,15 +67,20 @@ def get_label_desc_from_fname(fname: str):
     return label_desc
 
 
-def get_ipp_training_data(dog_num, time_step):
+def get_ipp_training_data(dog_num, hparams):
     record_start = get_record_start(dog_num)
 
     onset_datetimes = get_onsets(dog_num)
 
-    onsets_minutes = torch.Tensor(
-        [(onset - record_start).total_seconds() / time_step for onset in onset_datetimes])
+    onsets_real = torch.Tensor(
+        [(onset - record_start).total_seconds() / hparams['real_time_step'] for onset in onset_datetimes])
 
-    train_x = torch.arange(0, max(onsets_minutes))
-    train_y = torch.zeros_like(train_x).index_fill_(0, onsets_minutes.long(), 1)
+    train_x = torch.arange(0, max(onsets_real))
+    train_y = torch.zeros_like(train_x).index_fill_(0, onsets_real.long(), 1)
 
-    return train_x, train_y
+    # instantiate inducing points
+    onsets_inducing = torch.Tensor(
+        [(onset - record_start).total_seconds() / hparams['inducing_time_step'] for onset in onset_datetimes])
+    inducing_points = torch.arange(0, max(onsets_inducing))
+
+    return train_x, train_y, inducing_points
