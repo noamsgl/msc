@@ -9,11 +9,10 @@ from matplotlib import pyplot as plt
 from pytorch_lightning import seed_everything, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import CSVLogger
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 
 from msc import config
 from msc.canine_db_utils import get_onsets, get_record_start
-from msc.dataset import SingleSampleDataset
 from msc.models import InteractingPointProcessGPModel
 from msc.plot_utils import plot_seizure_occurrences_timeline, plot_seizure_intervals_histogram
 
@@ -33,86 +32,110 @@ if __name__ == '__main__':
     hparams = {'random_seed': 42,
                'learning_rate': 1e-2,
                'n_epochs': 800,
-               'time_step': 3600 * 2 * 2,
-               'version': '0.1.0',
+               'patience': 8,
+               'batch_size': 2048,
+               'inducing_time_step': 60 * 60 * 4,
+               'cholesky_jitter_double': 1e-1,  # default None
+               'real_time_step': 60 * 10,
+               'version': '0.1.3',
                'enable_progress_bar': True,
                'fast_dev_run': False,
                'graphic_verbose': True}
 
-    logger_dirpath = f"{config['PATH'][config['RESULTS_MACHINE']]['LIGHTNING_LOGS']}/prior/ipp"
-    imsave_dirpath = f"{logger_dirpath}/ipp_prior/{hparams['version']}/figures"
-    os.makedirs(imsave_dirpath, exist_ok=True)
+    # set gpytorch settings
+    with gpytorch.settings.cholesky_jitter(float=None, double=hparams['cholesky_jitter_double'], half=None):
 
-    seed_everything(hparams['random_seed'])
+        # set logger paths
+        logger_dirpath = f"{config['PATH'][config['RESULTS_MACHINE']]['LIGHTNING_LOGS']}/prior/ipp"
+        imsave_dirpath = f"{logger_dirpath}/ipp_prior/{hparams['version']}/figures"
+        os.makedirs(imsave_dirpath, exist_ok=True)
 
-    dog_num = 3
-    onset_datetimes: List[datetime.datetime] = get_onsets(dog_num)
+        # set rng seed
+        seed_everything(hparams['random_seed'])
 
-    if hparams['graphic_verbose']:
-        plot_seizure_occurrences_timeline(onset_datetimes, f"Dog 3")
-        plt.savefig(f"{imsave_dirpath}/seizures_timeline.png")
-        plt.clf()
-        plot_seizure_intervals_histogram(onset_datetimes, "Dog 3")
-        plt.savefig(f"{imsave_dirpath}/intervals_histogram.png")
-        plt.clf()
+        # get data
+        dog_num = 3
+        onset_datetimes: List[datetime.datetime] = get_onsets(dog_num)
+        record_start = get_record_start(dog_num)
 
-    record_start = get_record_start(dog_num)
+        # plot data
+        if hparams['graphic_verbose']:
+            plot_seizure_occurrences_timeline(onset_datetimes, f"Dog 3")
+            plt.savefig(f"{imsave_dirpath}/seizures_timeline.png")
+            plt.clf()
+            plot_seizure_intervals_histogram(onset_datetimes, "Dog 3")
+            plt.savefig(f"{imsave_dirpath}/intervals_histogram.png")
+            plt.clf()
 
-    onsets_minutes = torch.Tensor(
-        [(onset - record_start).total_seconds() / hparams['time_step'] for onset in onset_datetimes])
-    train_x = torch.arange(0, max(onsets_minutes))
-    train_y = torch.zeros_like(train_x).index_fill_(0, onsets_minutes.long(), 1)
-    train_dataloader = DataLoader(SingleSampleDataset(train_x, train_y), num_workers=0)
+        # instantiate training set
+        onsets_real = torch.Tensor(
+            [(onset - record_start).total_seconds() / hparams['real_time_step'] for onset in onset_datetimes])
+        train_x = torch.arange(0, max(onsets_real))
+        train_y = torch.zeros_like(train_x).index_fill_(0, onsets_real.long(), 1)
+        train_dataloader = DataLoader(TensorDataset(train_x, train_y), batch_size=hparams['batch_size'], shuffle=True,
+                                      num_workers=0)
 
-    likelihood = gpytorch.likelihoods.BernoulliLikelihood()
+        # instantiate inducing points
+        onsets_inducing = torch.Tensor(
+            [(onset - record_start).total_seconds() / hparams['inducing_time_step'] for onset in onset_datetimes])
+        inducing_points = torch.arange(0, max(onsets_inducing))
 
-    model = InteractingPointProcessGPModel(hparams, train_x, train_y)
+        likelihood = gpytorch.likelihoods.BernoulliLikelihood()
+        model = InteractingPointProcessGPModel(hparams, train_x, train_y, inducing_points)
 
-    # plot prior samples
-    if hparams['graphic_verbose']:
-        prior_distribution = likelihood(model(train_x))
+        # instantiate test set
+        test_x = train_x[:200]
 
-        n_draws = 8
-        for i in range(n_draws):
-            plt.plot(np.array(train_x[:100]), np.array((prior_distribution.sample() + 2 * i)[:100]))
-        plt.xlabel(f"time [{hparams['time_step']} * sec]")
-        plt.title('Prior')
-        plt.savefig(f"{imsave_dirpath}/prior.png")
-        plt.clf()
+        # plot prior samples
+        if hparams['graphic_verbose']:
+            prior_distribution = likelihood(model(test_x))
+            n_draws = 8
+            for i in range(n_draws):
+                plt.plot(np.array(test_x), np.array((prior_distribution.sample() + 2 * i)))
+            plt.xlabel(f"time [{hparams['real_time_step']} * sec]")
+            plt.title('Prior')
+            plt.savefig(f"{imsave_dirpath}/prior.png")
+            plt.clf()
 
-    # define trainer and fit model
-    checkpoint_callback = ModelCheckpoint(
-        monitor="train_loss",
-        # dirpath=logger_dirpath,
-        filename="gp_ipp-{epoch:03d}-{train_loss:.2f}",
-        save_top_k=1,
-        mode="min",
-        every_n_epochs=hparams['n_epochs']
-    )
+        # define trainer and fit model
+        checkpoint_callback = ModelCheckpoint(
+            monitor="train_loss",
+            # dirpath=logger_dirpath,
+            filename="gp_ipp-{epoch:03d}-{train_loss:.2f}",
+            save_top_k=1,
+            mode="min",
+            every_n_epochs=hparams['n_epochs']
+        )
 
-    early_stop_callback = MyEarlyStopping(monitor="train_loss", min_delta=0.00, patience=5, verbose=False, mode="min")
+        # instantiate early stopping
+        early_stop_callback = MyEarlyStopping(monitor="train_loss", min_delta=0.00, patience=hparams['patience'],
+                                              verbose=False, mode="min")
 
-    logger = CSVLogger(save_dir=logger_dirpath, name="ipp_prior", version=hparams['version'])
+        # instantiate logger
+        logger = CSVLogger(save_dir=logger_dirpath, name="ipp_prior", version=hparams['version'])
 
-    trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=1, gpus=1, profiler=None,
-                      callbacks=[early_stop_callback], fast_dev_run=hparams['fast_dev_run'],
-                      logger=logger,
-                      deterministic=True, enable_progress_bar=hparams['enable_progress_bar'])
+        # instnaite trainer and fit model
+        trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=1, gpus=1, profiler=None,
+                          callbacks=[early_stop_callback], fast_dev_run=hparams['fast_dev_run'],
+                          logger=logger,
+                          deterministic=True, enable_progress_bar=hparams['enable_progress_bar'])
 
-    trainer.fit(model, train_dataloader)
+        trainer.fit(model, train_dataloader)
 
-    trainer.save_checkpoint(f"{logger_dirpath}/ipp_prior/{hparams['version']}/checkpoints/gp_ipp.ckpt")
+        print(f"finished model fit")
+        # save checkpoint and state_dict
+        trainer.save_checkpoint(f"{logger_dirpath}/ipp_prior/{hparams['version']}/checkpoints/gp_ipp.ckpt")
 
-    torch.save(model.gpmodel.state_dict(), f"{logger_dirpath}/ipp_prior/{hparams['version']}/checkpoints/gp_ipp_state_dict.pth")
+        torch.save(model.gpmodel.state_dict(),
+                   f"{logger_dirpath}/ipp_prior/{hparams['version']}/checkpoints/gp_ipp_state_dict.pth")
 
-    if hparams['graphic_verbose']:
         # plot posterior samples
-        posterior_distribution = likelihood(model(train_x))
-        n_draws = 8
-        for i in range(n_draws):
-            plt.plot(train_x[:100], (posterior_distribution.sample() + 2 * i)[:100])
-        plt.xlabel(f"time [{hparams['time_step']} * sec]")
-        plt.title('Posterior')
-        plt.savefig(f"{imsave_dirpath}/posterior.png")
-        plt.clf()
-
+        if hparams['graphic_verbose']:
+            posterior_distribution = likelihood(model(test_x))
+            n_draws = 8
+            for i in range(n_draws):
+                plt.plot(test_x, (posterior_distribution.sample() + 2 * i))
+            plt.xlabel(f"time [{hparams['real_time_step']} * sec]")
+            plt.title('Posterior')
+            plt.savefig(f"{imsave_dirpath}/posterior.png")
+            plt.clf()

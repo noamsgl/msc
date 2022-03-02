@@ -2,6 +2,7 @@ import gpytorch
 import pytorch_lightning as pl
 import torch
 from gpytorch.variational import CholeskyVariationalDistribution, UnwhitenedVariationalStrategy, VariationalStrategy
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
 class EEGGPModel(gpytorch.models.ExactGP):
@@ -132,7 +133,8 @@ class InteractingPointProcessGPModel(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
-        return optimizer
+        lr_scheduler = CosineAnnealingLR(optimizer, T_max=10)
+        return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
         x, y = batch
