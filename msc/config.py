@@ -1,4 +1,6 @@
+import os
 from configparser import ConfigParser
+from typing import Tuple
 
 import git
 import yaml
@@ -6,7 +8,7 @@ from git import InvalidGitRepositoryError
 
 
 def get_config(kind='yaml') -> ConfigParser:
-    # read local file `config.yaml` from root_dir. If root_dir not given, will use root of git repository
+    # read local file `config.yaml` from settings dir.
     try:
         repo = git.Repo(search_parent_directories=True)
         root_dir = repo.working_tree_dir
@@ -19,3 +21,17 @@ def get_config(kind='yaml') -> ConfigParser:
 
     else:
         raise ValueError("incorrect config kind")
+
+
+def get_authentication() -> Tuple[str, str]:
+    # read local file `authentication.yaml` from settings dir.
+    try:
+        repo = git.Repo(search_parent_directories=True)
+        root_dir = repo.working_tree_dir
+    except InvalidGitRepositoryError:
+        root_dir = ".."
+
+    authentication_fpath = f'{root_dir}/settings/authentication.yaml'
+    assert os.path.isfile(authentication_fpath), "error: authentication.yaml file not found in settings"
+    config = yaml.safe_load(open(authentication_fpath, 'r'))
+    return config['USER'], config['PASSWORD']
