@@ -42,6 +42,9 @@ kaggle = "*"
 xmltodict = "*"
 pytorch-lightning = "*"
 mlxtend = "*"
+requests = "*"
+deprecation = "*"
+pennprov = "*"
 
 [dev-packages]
 # pytest = "*"
