@@ -226,3 +226,4 @@ cython_debug/
 ##### MSC GITIGNORE #####
 data/*
 results/*
+settings/authentication.yaml
