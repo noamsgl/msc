@@ -32,12 +32,13 @@ if __name__ == '__main__':
     hparams = {'random_seed': 42,
                'learning_rate': 1e-2,
                'n_epochs': 800,
-               'patience': 8,
+               'patience': 6,
                'batch_size': 2048,
-               'inducing_time_step': 60 * 60 * 4,
+               'inducing_time_step': 60 * 60 * 4,  # in seconds
                'cholesky_jitter_double': 1e-1,  # default None
-               'real_time_step': 60 * 10,
-               'version': '0.1.3',
+               'real_time_step': 60 * 10,  # in seconds
+               'num_cycles': 3,
+               'version': '0.1.6',
                'enable_progress_bar': True,
                'fast_dev_run': False,
                'graphic_verbose': True}
@@ -114,7 +115,7 @@ if __name__ == '__main__':
         # instantiate logger
         logger = CSVLogger(save_dir=logger_dirpath, name="ipp_prior", version=hparams['version'])
 
-        # instnaite trainer and fit model
+        # instantiate trainer and fit model
         trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=1, gpus=1, profiler=None,
                           callbacks=[early_stop_callback], fast_dev_run=hparams['fast_dev_run'],
                           logger=logger,

@@ -96,9 +96,8 @@ class SingleSampleEEGGPModel(pl.LightningModule):
         raise NotImplementedError()
 
 
-
 class HawkesProcessGP(gpytorch.models.ApproximateGP):
-    def __init__(self, train_x, likelihood, inducing_points):
+    def __init__(self, train_x, likelihood, inducing_points, num_cycles):
         variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
         variational_strategy = VariationalStrategy(
             self, inducing_points, variational_distribution, learn_inducing_locations=False
@@ -106,8 +105,16 @@ class HawkesProcessGP(gpytorch.models.ApproximateGP):
         super(HawkesProcessGP, self).__init__(variational_strategy)
         self.likelihood = likelihood
         self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.CosineKernel() + gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.MaternKernel(3 / 2))
+        # self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.CosineKernel() + gpytorch.kernels.ScaleKernel(
+        #     gpytorch.kernels.MaternKernel(3 / 2))
+        if num_cycles == 1:
+            self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.PeriodicKernel()
+        elif num_cycles == 2:
+            self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.PeriodicKernel() + gpytorch.kernels.RBFKernel() * gpytorch.kernels.PeriodicKernel()
+        elif num_cycles == 3:
+            self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.PeriodicKernel() + gpytorch.kernels.RBFKernel() * gpytorch.kernels.PeriodicKernel() + gpytorch.kernels.RBFKernel() * gpytorch.kernels.PeriodicKernel()
+        else:
+            raise ValueError("only supporting up to 3 cycles")
 
     def forward(self, x):
         mean_x = self.mean_module(x)
@@ -122,7 +129,7 @@ class InteractingPointProcessGPModel(pl.LightningModule):
         self.save_hyperparameters(hparams)
 
         likelihood = gpytorch.likelihoods.BernoulliLikelihood()
-        self.gpmodel = HawkesProcessGP(train_x, likelihood, inducing_points)
+        self.gpmodel = HawkesProcessGP(train_x, likelihood, inducing_points, hparams['num_cycles'])
 
         # "Loss" for GPs - marginal log likelihood
         self.mll = gpytorch.mlls.VariationalELBO(likelihood, self.gpmodel, train_y.numel())
