@@ -5,10 +5,11 @@ python_version = "3.8"
 name = 'pypi'
 url = 'https://pypi.python.org/simple'
 verify_ssl = true
+#
 #[[source]]
-#name = "pytorch"
-#url = "https://download.pytorch.org/whl/cu102"
-#verify_ssl = false
+#name = "downloadpytorch"
+#url = "https://download.pytorch.org/whl/cu113/"
+#verify_ssl = true
 
 [packages]
 jupyter = "*"
@@ -45,6 +46,7 @@ mlxtend = "*"
 requests = "*"
 deprecation = "*"
 pennprov = "*"
+torch = "==1.11.0+cu113"
 
 [dev-packages]
 # pytest = "*"
