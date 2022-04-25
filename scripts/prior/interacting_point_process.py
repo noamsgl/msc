@@ -37,8 +37,8 @@ if __name__ == '__main__':
                'inducing_time_step': 60 * 60 * 4,  # in seconds
                'cholesky_jitter_double': 1e-1,  # default None
                'real_time_step': 60 * 10,  # in seconds
-               'num_cycles': 3,
-               'version': '0.1.6',
+               'num_cycles': 0,
+               'version': '0.1.7',
                'enable_progress_bar': True,
                'fast_dev_run': False,
                'graphic_verbose': True}

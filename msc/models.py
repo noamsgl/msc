@@ -107,7 +107,9 @@ class HawkesProcessGP(gpytorch.models.ApproximateGP):
         self.mean_module = gpytorch.means.ConstantMean()
         # self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.CosineKernel() + gpytorch.kernels.ScaleKernel(
         #     gpytorch.kernels.MaternKernel(3 / 2))
-        if num_cycles == 1:
+        if num_cycles == 0:
+            self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.PeriodicKernel() + gpytorch.kernels.MaternKernel(3/2)
+        elif num_cycles == 1:
             self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.PeriodicKernel()
         elif num_cycles == 2:
             self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.PeriodicKernel() + gpytorch.kernels.RBFKernel() * gpytorch.kernels.PeriodicKernel()
