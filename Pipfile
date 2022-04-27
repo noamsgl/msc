@@ -11,6 +11,11 @@ verify_ssl = true
 #url = "https://download.pytorch.org/whl/cu113/"
 #verify_ssl = true
 
+[[source]]
+url = "https://download.pytorch.org/whl/cu113/"
+verify_ssl = true
+name = "downloadpytorch"
+
 [packages]
 jupyter = "*"
 numpy = "*"
@@ -47,6 +52,7 @@ requests = "*"
 deprecation = "*"
 pennprov = "*"
 torch = "==1.11.0+cu113"
+scienceplots = "*"
 
 [dev-packages]
 # pytest = "*"
