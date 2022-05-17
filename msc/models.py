@@ -104,7 +104,7 @@ class HawkesProcessGP(gpytorch.models.ApproximateGP):
         )
         super(HawkesProcessGP, self).__init__(variational_strategy)
         self.likelihood = likelihood
-        self.mean_module = gpytorch.means.ConstantMean()
+        self.mean_module = gpytorch.means.ZeroMean()
         # self.covar_module = gpytorch.kernels.RBFKernel() * gpytorch.kernels.CosineKernel() + gpytorch.kernels.ScaleKernel(
         #     gpytorch.kernels.MaternKernel(3 / 2))
         if num_cycles == 0:
