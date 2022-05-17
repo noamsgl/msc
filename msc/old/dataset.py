@@ -917,6 +917,7 @@ class DogDataset:
                 mat_content = loadmat(fpath)
                 data = mat_content['data']
 
+
                 # build Pandas DataFrame
                 channel_names = list(mat_content['channels'].values())
                 freq = mat_content['freq']
