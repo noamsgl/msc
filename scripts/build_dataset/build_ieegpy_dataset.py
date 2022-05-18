@@ -14,14 +14,17 @@ from tqdm import tqdm
 from msc.config import get_authentication
 from msc import config
 
-def generate_data_intervals(ds: Dataset, duration=1e6, extension='npy', N=1000):
+def generate_data_intervals(ds: Dataset, duration=1e6, extension='npy', N=1000, to_exclude=None):
     onsets = np.arange(0, ds.end_time, step=duration)
     data_intervals = []
-    for idx, onset in tqdm(enumerate(onsets)):
+    for idx, onset in enumerate(onsets):
+        data_row = pd.Series({"interval_idx": idx, "onset": onset, "fname": f"{int(onset)}.{extension}"}).to_frame().T
+        # exclude interval if exists
+        if data_row['fname'].item() in to_exclude:
+          continue
         data = ds.get_data(onset, duration, np.arange(len(ds.ch_labels)))
         if np.isnan(data).any():
             continue
-        data_row = pd.Series({"interval_idx": idx, "onset": onset, "fname": f"{onset}.{extension}"}).to_frame().T
         yield data_row, data
 
 
@@ -40,14 +43,15 @@ if __name__ == '__main__':
         
         dataset_dir = f"{config['PATH'][config['RESULTS_MACHINE']]['IEEG_DATASET']}/{patient_name}"
         os.makedirs(dataset_dir, exist_ok=True)
-
+        
+        to_exclude = os.listdir(dataset_dir)
         intervals_rows = []
-        for data_row, data in generate_data_intervals(ds, N=2000, extension="npy"):
+        for data_row, data in generate_data_intervals(ds, N=2000, extension="npy", to_exclude=to_exclude):
             intervals_rows.append(data_row)
             # pickle.dump(data, open(f"{dataset_dir}/{data_row['fname'].item()}", 'wb'))
             np.save(f"{dataset_dir}/{data_row['fname'].item()}", data)
             print(data_row['interval_idx'])
-            print(data)
+            # print(data)
 
  
         dataset_df = pd.concat(intervals_rows, axis=0)
