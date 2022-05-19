@@ -5,10 +5,16 @@ python_version = "3.8"
 name = 'pypi'
 url = 'https://pypi.python.org/simple'
 verify_ssl = true
+#
 #[[source]]
-#name = "pytorch"
-#url = "https://download.pytorch.org/whl/cu102"
-#verify_ssl = false
+#name = "downloadpytorch"
+#url = "https://download.pytorch.org/whl/cu113/"
+#verify_ssl = true
+
+[[source]]
+url = "https://download.pytorch.org/whl/cu113/"
+verify_ssl = true
+name = "downloadpytorch"
 
 [packages]
 jupyter = "*"
@@ -36,12 +42,17 @@ pyro-ppl = "*"
 # torch = {index = "pytorch",version = "==1.10.1"}
 # paramiko = "*"
 # fooof = "*"
-#torch = {file = "https://download.pytorch.org/whl/cu102/torch-1.10.1%2Bcu102-cp38-cp38-win_amd64.whl"}
+#torch = {file = "https://download.pytorch.org/whl/cu102/torch-1.10.2%2Bcu102-cp38-cp38-win_amd64.whl"}
 pymef = "*"
 kaggle = "*"
 xmltodict = "*"
 pytorch-lightning = "*"
 mlxtend = "*"
+requests = "*"
+deprecation = "*"
+pennprov = "*"
+torch = "==1.11.0+cu113"
+scienceplots = "*"
 
 [dev-packages]
 # pytest = "*"

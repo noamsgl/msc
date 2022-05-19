@@ -1,0 +1,3 @@
+[submodule "ieegpy"]
+	path = ieegpy
+	url = https://github.com/noamsgl/ieegpy.git

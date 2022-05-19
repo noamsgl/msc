@@ -14,7 +14,7 @@ The repository structure consists of:
 * [scripts/density_estimation/](scripts/density_estimation/): fitting density estimators to embeddings
 * [scripts/eda/](scripts/eda/): exploratory data analysis
 * [scripts/generate/](scripts/generate/): generating synthetic EEG data
-* [scripts/inference/](scripts/inference/): conditioning time-series models on data
+* [scripts/embedding/](scripts/embedding/): embedding EEG in parametric representations
 * [scripts/psp/](scripts/psp/): scripts for the final project in physiological signal processing
 * [scripts/reports/](scripts/reports/): scripts for dumping results to PDF reports
 * [settings/](settings/): configuration file
@@ -40,3 +40,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 * My advisors - Oren and David.
 * Ben Gurion University.
 * Project dependencies.
+
+## External resources
+* [Thesis on Overleaf](https://www.overleaf.com/project/624953592e0ec36e1eeae25d)
+* [GP latent background rate inference](https://colab.research.google.com/drive/1W0t-_e1iDmoNV8bPxBeQRfYQ1IdQLIuc?usp=sharing)
