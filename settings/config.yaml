@@ -1,30 +1,13 @@
 ---
-FAST_DEV: TRUE
+FAST_DEV: FALSE
 FAST_DEV_K: 3
-PATH:
-  LOCAL:
-    RAW_DATASET: C:\raw_data\epilepsiae
-    RESULTS: C:\Users\noam\Repositories\noamsgl\msc\results
-    PSP_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae
-    SEIZURES_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\epilepsiae
-    IEEG_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\ieeg
-    LIGHTNING_LOGS: C:\Users\noam\Repositories\noamsgl\msc\results\lightning_logs
-    DATA_DIR: C:\Users\noam\Repositories\noamsgl\msc\data
 
-  BGUCLUSTER:
-    RAW_DATASET: /cs_storage/noamsi/raw_data/epilepsiae/
-    RESULTS: /cs_storage/noamsi/results/
-    PSP_DATASET: /cs_storage/noamsi/results/epilepsiae/
-    DATA_DIR: /cs_storage/noamsi/msc/data/
-    LIGHTNING_LOGS: /cs_storage/noamsi/msc/results/lightning_logs
-    IEEG_DATASET: /cs_storage/noamsi/msc/results/ieeg
-
-  MIRIAM:
-    RAW_DATASET: \\132.72.65.115\epilepsy_data\Epilepsiea\raw_data
-
+DATASET: ieeg
+INDEX_MACHINE: LOCAL
+RAW_MACHINE: LOCAL
+RESULTS_MACHINE: LOCAL
 
 TASK:
-  PICKS: "one_channel"
   RESAMPLE: 256
   PREICTAL_MIN_DIFF_HOURS: 1
   INTERICTAL_MIN_DIFF_HOURS: 4
@@ -32,14 +15,15 @@ TASK:
   PREICTAL_LABEL: "1"
   ICTAL_LABEL: "2"
 
-
-RESULTS:
+PATH:
   LOCAL:
+    ROOT: C:\Users\noam\Repositories\noamsgl\msc\
+    RESULTS: C:\Users\noam\Repositories\noamsgl\msc\results
+    IEEG_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\ieeg
+    LIGHTNING_LOGS: C:\Users\noam\Repositories\noamsgl\msc\results\lightning_logs
 
   BGUCLUSTER:
-    RESULTS_DIR: "/cs_storage/noamsi/results"
-
-DATASET: ieeg
-INDEX_MACHINE: LOCAL
-RAW_MACHINE: LOCAL
-RESULTS_MACHINE: LOCAL
+    ROOT: /cs_storage/noamsi/msc/
+    RESULTS: /cs_storage/noamsi/results/
+    IEEG_DATASET: /cs_storage/noamsi/msc/results/ieeg
+    LIGHTNING_LOGS: /cs_storage/noamsi/msc/results/lightning_logs

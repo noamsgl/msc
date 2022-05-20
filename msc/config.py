@@ -33,5 +33,6 @@ def get_authentication() -> Tuple[str, str]:
 
     authentication_fpath = f'{root_dir}/settings/authentication.yaml'
     assert os.path.isfile(authentication_fpath), "error: authentication.yaml file not found in settings"
-    config = yaml.safe_load(open(authentication_fpath, 'r'))
+    with open(authentication_fpath, 'r') as f:
+        config = yaml.safe_load(f)
     return config['USER'], config['PASSWORD']

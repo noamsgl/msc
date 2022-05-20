@@ -12,6 +12,7 @@ class IEEGDataFactory:
     @classmethod 
     def get_dataset(cls, dataset_id) -> Dataset:
         username, password = get_authentication()
-        s = Session(username, password)  # start streaming session
-        ds = s.open_dataset(dataset_id)  # open dataset stream
+        with Session(username, password) as s:# start streaming session
+            ds = s.open_dataset(dataset_id)  # open dataset stream
         return ds
+    
