@@ -8,7 +8,7 @@ from git import InvalidGitRepositoryError
 
 
 def get_config(kind='yaml') -> ConfigParser:
-    # read local file `config.yaml` from settings dir.
+    # read local file `config.yaml` from config dir.
     try:
         repo = git.Repo(search_parent_directories=True)
         root_dir = repo.working_tree_dir
@@ -16,7 +16,7 @@ def get_config(kind='yaml') -> ConfigParser:
         root_dir = ".."
 
     if kind == 'yaml':
-        config = yaml.safe_load(open(f'{root_dir}/settings/config.yaml', 'r'))
+        config = yaml.safe_load(open(f'{root_dir}/config/config.yaml', 'r'))
         return config
 
     else:
@@ -24,15 +24,15 @@ def get_config(kind='yaml') -> ConfigParser:
 
 
 def get_authentication() -> Tuple[str, str]:
-    # read local file `authentication.yaml` from settings dir.
+    # read local file `authentication.yaml` from config dir.
     try:
         repo = git.Repo(search_parent_directories=True)
         root_dir = repo.working_tree_dir
     except InvalidGitRepositoryError:
         root_dir = ".."
 
-    authentication_fpath = f'{root_dir}/settings/authentication.yaml'
-    assert os.path.isfile(authentication_fpath), "error: authentication.yaml file not found in settings"
+    authentication_fpath = f'{root_dir}/config/authentication.yaml'
+    assert os.path.isfile(authentication_fpath), "error: authentication.yaml file not found in config"
     with open(authentication_fpath, 'r') as f:
         config = yaml.safe_load(f)
     return config['USER'], config['PASSWORD']

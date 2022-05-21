@@ -17,7 +17,7 @@ The repository structure consists of:
 * [scripts/embedding/](scripts/embedding/): embedding EEG in parametric representations
 * [scripts/psp/](scripts/psp/): scripts for the final project in physiological signal processing
 * [scripts/reports/](scripts/reports/): scripts for dumping results to PDF reports
-* [settings/](settings/): configuration file
+* [config/](config/): configuration file
 * [msc/](msc/): a Python package with functions used across scripts
 
 

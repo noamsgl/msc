@@ -1,19 +1,20 @@
 """Estimate class tests
 """
-import subprocess
-import sys
-
 # TODO: move to archive
+# import subprocess
+# import sys
 # def install(package):
 #     subprocess.check_call([sys.executable, "-m", "pip", "install", package]
 # install('debugpy')
-
+import hydra
+from hydra import initialize, compose
 import numpy as np
 import unittest
 from sklearn.utils import assert_all_finite
 
-from msc.embedding import GPEmbeddor
-from msc.data import IEEGDataFactory
+import msc
+from msc.models.embedding import GPEmbeddor
+from msc.datamodules.data_utils import IEEGDataFactory
 
 import debugpy
 print("listening to client on localhost:5678")
@@ -35,20 +36,26 @@ class CustomAssertions:
             if abs(first[i] - second[i]) > tolerance:
                 raise AssertionError(f"Shapes mismatch at dimension {i}")
 
-class TestEmbeddorComputesEmbeddings(unittest.TestCase):
+class TestEmbeddorComputesEmbeddings(unittest.TestCase, CustomAssertions):
     """Test that the Embeddor computes embeddings"""
     
-    def test_embeddor_computes_embeddings(self):
+    # @hydra.main(config_path="config", config_name="gpembeddor")
+    def test_embeddor_computes_embeddings(self) -> None:
         """Ensures the embeddor recieves data as expected"""
+        # get data
         dataset = IEEGDataFactory.get_dataset(DATASET_ID)
         data = dataset.get_data(TIME, DURATION, np.arange(NUM_CHANNELS))
         assert_all_finite(data)
         
-        embeddor = GPEmbeddor()
-        embedding = GPEmbeddor.embed(data)
-        
+        # dataset.close()
 
-        dataset.close()
-        
+        # estimate data embedding
+        with initialize(version_base=None, config_path="../config/embeddor/"):
+            cfg = compose(config_name="gp", overrides=[])
+            gp : GPEmbeddor = hydra.utils.instantiate(cfg.embeddor)
+            embedding = gp.embed(data)
+
+        assert_all_finite(embedding)
+
 if __name__ == '__main__':
     unittest.main()
