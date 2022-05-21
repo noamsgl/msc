@@ -47,8 +47,6 @@ class TestEmbeddorComputesEmbeddings(unittest.TestCase, CustomAssertions):
         data = dataset.get_data(TIME, DURATION, np.arange(NUM_CHANNELS))
         assert_all_finite(data)
         
-        # dataset.close()
-
         # estimate data embedding
         with initialize(version_base=None, config_path="../config/embeddor/"):
             cfg = compose(config_name="gp", overrides=[])
