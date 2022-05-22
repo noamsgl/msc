@@ -3,8 +3,18 @@ import sys
 import yaml
 
 import numpy as np
+import zarr
 
 from msc.datamodules.data_utils import IEEGDataFactory
+
+import debugpy
+
+from msc.slurm_handler import SlurmHandler
+
+# print("listening to client on localhost:5678")
+# debugpy.listen(5678)
+# print("waiting for client to attach")
+# debugpy.wait_for_client()
 
 class OfflineExperiment:
     """ This class orchestrates the offline experiment from start to finish.
@@ -26,7 +36,7 @@ class OfflineExperiment:
     def __init__(self, config):
       self.config = config
       self.logger = self.get_logger()
-      self.ds = self.get_dataset()
+    #   self.ds = self.get_dataset()
       self.results = None
     
     def get_logger(self):
@@ -55,7 +65,7 @@ class OfflineExperiment:
 
     def get_dataset(self):
         # get dataset from iEEG.org
-        ds_id = self.config['DATASET_ID']
+        ds_id = self.config['dataset_id']
         ds = IEEGDataFactory.get_dataset(ds_id)
         return ds
     
@@ -72,9 +82,33 @@ class OfflineExperiment:
 
         groups = np.split(times, 2)
         
-        for group in groups:
-            
+        root = zarr.open('data/embed.zarr', 'w')
+        raw = root.create_group('data')
+        embeddings = root.create_group('embeddings')
 
+        # initialize times array
+        root_zarr = zarr.open('data/job_inputs.zarr', mode='w')
+
+
+        for job_code, job_times in enumerate(groups):
+            # input times data
+            job_zarr = root_zarr.create_group(str(job_code))
+            times_zarr = job_zarr.zeros('times', shape=job_times.shape, dtype='i8')
+            times_zarr[:] = job_times
+
+            # create job configuration
+            job_config = {
+                "job_code": job_code,
+                "job_times": job_times,
+                "dataset_id": self.config['dataset_id'],
+                "duration": self.config['duration']
+            }
+
+            # submit Slurm Job(group)
+            slurm = SlurmHandler(jobname='embed')
+            slurm.submitJob(job_config)
+
+        results = None
         if results is not None:
             self.analyze_results(results)
         return results

@@ -1,6 +1,6 @@
 #!/bin/bash
 ## thesis/experiment/scripts/embed.sbatch
-## expects $1 is path to embeddor config file.yaml
+## expects $1 is path to experiment config.yaml
 
 #SBATCH --partition main                        ### specify partition name where to run a job. short: 7 days limit; gtx1080: 7 days; debug: 2 hours limit and 1 job at a time
 #SBATCH --time 0-03:30:00                       ### limit the time of job running. Make sure it is not greater than the partition time limit!! Format: D-H:MM:SS

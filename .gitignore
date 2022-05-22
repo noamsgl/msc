@@ -225,6 +225,8 @@ cython_debug/
 
 ##### MSC GITIGNORE #####
 data/*
+output/*
 results/*
+scratch/*
 config/authentication.yaml
 .vscode/*

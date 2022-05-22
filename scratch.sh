@@ -1,4 +1,4 @@
 #!/bin/bash
 
-CONFIG="config/embeddor/gp.yaml"
+CONFIG="config/config.yaml"
 sbatch thesis/experiment/scripts/embed.batch $CONFIG
