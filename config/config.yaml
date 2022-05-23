@@ -17,15 +17,13 @@ TASK:
   PREICTAL_LABEL: "1"
   ICTAL_LABEL: "2"
 
-PATH:
-  LOCAL:
-    ROOT: C:\Users\noam\Repositories\noamsgl\msc\
-    RESULTS: C:\Users\noam\Repositories\noamsgl\msc\results
-    IEEG_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\ieeg
-    LIGHTNING_LOGS: C:\Users\noam\Repositories\noamsgl\msc\results\lightning_logs
-
-  BGUCLUSTER:
-    ROOT: /cs_storage/noamsi/msc/
-    RESULTS: /cs_storage/noamsi/results/
-    IEEG_DATASET: /cs_storage/noamsi/msc/results/ieeg
-    LIGHTNING_LOGS: /cs_storage/noamsi/msc/results/lightning_logs
+path:
+  # LOCAL:
+  #   ROOT: C:\Users\noam\Repositories\noamsgl\msc\
+  #   RESULTS: C:\Users\noam\Repositories\noamsgl\msc\results
+  #   IEEG_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\ieeg
+  #   LIGHTNING_LOGS: C:\Users\noam\Repositories\noamsgl\msc\results\lightning_logs
+  cache: /cs_storage/noamsi/msc/data
+  root: /cs_storage/noamsi/msc
+  results: /cs_storage/noamsi/results
+  lightning_logs: /cs_storage/noamsi/msc/output/lightning_logs

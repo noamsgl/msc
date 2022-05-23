@@ -32,7 +32,7 @@ def get_authentication() -> Tuple[str, str]:
         root_dir = ".."
 
     authentication_fpath = f'{root_dir}/config/authentication.yaml'
-    assert os.path.isfile(authentication_fpath), "error: authentication.yaml file not found in config"
+    assert os.path.isfile(authentication_fpath), "error: authentication.yaml file not found in config directory"
     with open(authentication_fpath, 'r') as f:
         config = yaml.safe_load(f)
     return config['USER'], config['PASSWORD']

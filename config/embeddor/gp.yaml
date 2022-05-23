@@ -1,5 +1,5 @@
 embeddor:
-  _target_: msc.embedding.GPEmbeddor
+  _target_: msc.models.embedding.GPEmbeddor
   random_seed: 42
   num_channels: 2
   learning_rate: 0.01

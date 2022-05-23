@@ -36,7 +36,6 @@ class OfflineExperiment:
     def __init__(self, config):
       self.config = config
       self.logger = self.get_logger()
-    #   self.ds = self.get_dataset()
       self.results = None
     
     def get_logger(self):
@@ -50,7 +49,7 @@ class OfflineExperiment:
                 ' "line_no":%(lineno)s, "level":"%(levelname)s", "msg":"%(message)s"},'
             )
         )
-
+        
         # create a channel for handling the logger and set its format
         ch = logging.StreamHandler(sys.stderr)
         ch.setFormatter(formatter)
@@ -101,7 +100,8 @@ class OfflineExperiment:
                 "job_code": job_code,
                 "job_times": job_times,
                 "dataset_id": self.config['dataset_id'],
-                "duration": self.config['duration']
+                "duration": self.config['duration'],
+                "num_channels": self.config['num_channels']
             }
 
             # submit Slurm Job(group)

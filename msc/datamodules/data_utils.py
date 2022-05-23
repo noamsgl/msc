@@ -1,7 +1,22 @@
+from torch import Tensor
 
 from ieegpy.ieeg.auth import Session
 from ieegpy.ieeg.dataset import Dataset
 from msc.config import get_authentication
+
+
+class SingleSampleDataset(Dataset):
+    def __init__(self, x: Tensor, y: Tensor):
+        self.x = x
+        self.y = y
+        self.samples = ((x, y),)
+
+    def __len__(self):
+        return 1
+
+    def __getitem__(self, idx):
+        return self.samples[idx]
+
 
 
 class IEEGDataFactory:
