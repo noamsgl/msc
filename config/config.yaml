@@ -5,6 +5,7 @@ FAST_DEV_K: 3
 dataset_id: I004_A0003_D001
 duration: 10
 num_channels: 2
+t_max: 17280000  # 200 days in seconds
 INDEX_MACHINE: BGUCLUSTER
 RAW_MACHINE: BGUCLUSTER
 RESULTS_MACHINE: BGUCLUSTER
@@ -23,7 +24,7 @@ path:
   #   RESULTS: C:\Users\noam\Repositories\noamsgl\msc\results
   #   IEEG_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\ieeg
   #   LIGHTNING_LOGS: C:\Users\noam\Repositories\noamsgl\msc\results\lightning_logs
-  cache: /cs_storage/noamsi/msc/data
+  data: /cs_storage/noamsi/msc/data
   root: /cs_storage/noamsi/msc
   results: /cs_storage/noamsi/results
   lightning_logs: /cs_storage/noamsi/msc/output/lightning_logs

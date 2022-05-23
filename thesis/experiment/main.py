@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 import yaml
 
@@ -72,23 +73,59 @@ class OfflineExperiment:
         assert self.results is not None, "error: self.results is None"
         raise NotImplementedError()
     
+    def compute_ds_stats(self, N=100):
+        """A function to estimate a dataset's mean and standard deviation per channel"""
+        ds = self.get_dataset()
+        # initialize sample times
+        sample_times = np.random.randint(0, self.config['t_max'], size=N)
+        sample_times.sort()
+        samples = []
+        # download samples
+        for idx, t in enumerate(sample_times):
+            data_t = ds.get_data(t, self.config['duration'], np.arange(self.config['num_channels']))
+            samples.append(data_t)
+            nan_count = np.count_nonzero(np.isnan(data_t))
+            if nan_count != 0:
+                self.logger.info(f"At time {t} ({idx}/{len(sample_times)}) there are {nan_count}/{data_t.size} nan entries")
+        data = np.vstack(samples)
+        # calculate mean and std
+        mu = np.nanmean(data, axis=0)
+        std = np.nanstd(data, axis=0)
+
+        # save mean and std to cache
+        cache_zarr = zarr.open(f"{self.config['path']['data']}/cache.zarr")
+        ds_zarr = cache_zarr[f"{self.config['dataset_id']}"]
+        ds_zarr['mu'] = mu
+        ds_zarr['std'] = std
+        return mu, std
+
     def run(self):
         # begin experiment        
         self.logger.info(f"{self.config=}")
+        
+        # get dataset's mean and std from cache or create if nonexistent
+        ds_stats_are_computed = False
+        if os.path.exists(f"{config['path']['data']}/cache.zarr"):
+            cache_zarr = zarr.open(f"{config['path']['data']}/cache.zarr", 'r')
+            ds_zarr = cache_zarr[f"{self.config['dataset_id']}"]
+            if ('mu' in ds_zarr) and ('std' in ds_zarr):
+                ds_stats_are_computed = True
+                mu = ds_zarr['mu'][:]
+                std = ds_zarr['std'][:]
+
+        if not ds_stats_are_computed:
+            mu, std = self.compute_ds_stats()
 
         # create times
         times = np.array([5, 10, 15, 20])
 
+        # split times into groups (processes)
         groups = np.split(times, 2)
         
-        root = zarr.open('data/embed.zarr', 'w')
-        raw = root.create_group('data')
-        embeddings = root.create_group('embeddings')
-
         # initialize times array
-        root_zarr = zarr.open('data/job_inputs.zarr', mode='w')
+        root_zarr = zarr.open(f"{config['path']['data']}/job_inputs.zarr", mode='w')
 
-
+        # for each group of times, submit a Slurm job
         for job_code, job_times in enumerate(groups):
             # input times data
             job_zarr = root_zarr.create_group(str(job_code))

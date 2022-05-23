@@ -48,12 +48,21 @@ def embed(job_code, dataset_id, duration, num_channels) -> None:
     # get dataset
     ds = get_dataset(dataset_id)
 
+    cache_zarr = zarr.open(f"{config['path']['data']}/cache.zarr", 'r')
+    ds_zarr = cache_zarr[f"{self.config['dataset_id']}"]
+    assert ('mu' in ds_zarr)
+    assert ('std' in ds_zarr)
+
+    # TODO: stopped here
+    # TODO: get mu and std from ds_zarr
+    # TODO: normalize data array by subtracting mu and dividing by std
+    
     # get times from times zarr
-    job_inputs_zarr = zarr.open(f"{config['path']['cache']}/job_inputs.zarr", mode='r')
+    job_inputs_zarr = zarr.open(f"{config['path']['data']}/job_inputs.zarr", mode='r')
     times_zarr = job_inputs_zarr[f"{job_code}/times"]
     
     # get data & results zarr
-    cache_zarr = zarr.open(f"{config['path']['cache']}/'cache'.zarr", mode='w')
+    cache_zarr = zarr.open(f"{config['path']['data']}/cache.zarr", mode='w')
     for t in times_zarr:
         # initialize t_zarr (a zarray for time t)
         t_zarr = cache_zarr.create_group(f"{t}")

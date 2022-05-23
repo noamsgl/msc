@@ -28,6 +28,7 @@ class SlurmHandler(object):
 #SBATCH --cpus-per-task=4
 #SBATCH --mail-user={usermail}
 #SBATCH --mail-type=ALL
+#SBATCH --gpus=1				### number of GPUs, allocating more than 1 requires IT team's permission
 
 echo -e "\\nSLURM_JOBID:\\t\\t" $SLURM_JOBID
 echo -e "SLURM_JOB_NODELIST:\\t" $SLURM_JOB_NODELIST "\\n\\n"

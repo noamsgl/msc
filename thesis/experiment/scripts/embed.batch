@@ -10,6 +10,8 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 
+#SBATCH --gpus=1			                	### number of GPUs, allocating more than 1 requires IT team's permission
+
 #SBATCH --mail-user=noamsi@post.bgu.ac.il        ### user's email for sending job status messages
 #SBATCH --mail-type=ALL                        ### conditions for sending the email. ALL,BEGIN,END,FAIL, REQUEU, NONE
 ##SBATCH --mem=12G                              ### ammount of RAM memory
