@@ -2,14 +2,17 @@ import os
 import gpytorch
 import hydra
 import logging
+import pandas as pd
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, TQDMProgressBar
 from pytorch_lightning.loggers import CSVLogger
+
 import torch
 from torch.utils.data import DataLoader
 
 from msc.datamodules.data_utils import SingleSampleDataset
+from msc.models.model_utils import MyEarlyStopping
 
 
 class GPEmbeddor:
@@ -24,6 +27,7 @@ class GPEmbeddor:
                         'num_channels': num_channels,
                         'learning_rate': learning_rate,
                         'n_epochs': n_epochs,
+                        'patience': 8,
                         'version': '0.2.0',
                         'enable_progress_bar': False,
                         'fast_dev_run': fast_dev_run,
@@ -58,20 +62,51 @@ class GPEmbeddor:
                 every_n_epochs=self.hparams['n_epochs']
         )
         
+        # instantiate logger
         logger = CSVLogger(save_dir=logger_dirpath, name="gp_embedding", version=self.hparams['version'])
+         # instantiate early stopping
+         
+        early_stop_callback = MyEarlyStopping(monitor="train_loss", min_delta=0.00, patience=self.hparams['patience'],
+                                              verbose=False, mode="min")
 
         
-        trainer = Trainer(max_epochs=self.hparams['n_epochs'], log_every_n_steps=200, gpus=1, profiler=None,
-                            callbacks=[checkpoint_callback], fast_dev_run=False, logger=logger,
+        trainer = Trainer(max_epochs=self.hparams['n_epochs'], log_every_n_steps=self.hparams['n_epochs']/10, gpus=1, profiler=None,
+                            callbacks=[early_stop_callback, checkpoint_callback, TQDMProgressBar(refresh_rate=10)], fast_dev_run=False, logger=logger,
                             deterministic=True, enable_progress_bar=self.hparams['enable_progress_bar'])
 
         trainer.fit(model, train_dataloader)
         
-        # TODO:collect results as embedding
-
+        # TODO: add limited progress bar
         # save low dimensional vector to file
-        print(data.shape)
-        return data.flatten()
+        embedding = self.from_csv_logs(logger_dirpath)
+        return embedding
+    
+    @staticmethod
+    def from_csv_logs(logger_dirpath):
+        """
+        1) get Gaussian Process related requested_params from logger_dir
+        2) parse results into results_df
+        Args:
+            logger_dirpath:
+
+        Returns:
+
+        """
+        result_df = None
+        for root, dirs, files in os.walk(logger_dirpath, topdown=False):
+            for fname in files:
+                if fname == 'metrics.csv':
+                    # path_components = root.split(os.sep)
+                    # version = path_components[-1]
+                    # experiment_name = path_components[-2]
+                    # ch_names = path_components[-3]
+                    # clip_name = path_components[-4]
+                    metrics_df = pd.read_csv(os.path.join(root, fname))
+                    result_df = metrics_df.copy().loc[metrics_df['step'].idxmax()]
+                    result_df = result_df.drop(columns=['train_loss', 'epoch', 'step'])
+        assert result_df is not None, "error: could not find metrics.csv"
+        return result_df.to_numpy()
+
 
 
 

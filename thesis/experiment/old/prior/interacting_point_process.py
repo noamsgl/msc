@@ -17,16 +17,6 @@ from msc.models import InteractingPointProcessGPModel
 from msc.plot_utils import plot_seizure_occurrences_timeline, plot_seizure_intervals_histogram
 
 
-class MyEarlyStopping(EarlyStopping):
-    def on_validation_end(self, trainer, pl_module):
-        # override this to disable early stopping at the end of val loop
-        pass
-
-    def on_train_end(self, trainer, pl_module):
-        # instead, do it at the end of training loop
-        self._run_early_stopping_check(trainer)
-
-
 if __name__ == '__main__':
     # override parameters with provided dictionary
     hparams = {'random_seed': 42,
@@ -108,16 +98,13 @@ if __name__ == '__main__':
             every_n_epochs=hparams['n_epochs']
         )
 
-        # instantiate early stopping
-        early_stop_callback = MyEarlyStopping(monitor="train_loss", min_delta=0.00, patience=hparams['patience'],
-                                              verbose=False, mode="min")
-
+       
         # instantiate logger
         logger = CSVLogger(save_dir=logger_dirpath, name="ipp_prior", version=hparams['version'])
 
         # instantiate trainer and fit model
         trainer = Trainer(max_epochs=hparams['n_epochs'], log_every_n_steps=1, gpus=1, profiler=None,
-                          callbacks=[early_stop_callback], fast_dev_run=hparams['fast_dev_run'],
+                          callbacks=[], fast_dev_run=hparams['fast_dev_run'],
                           logger=logger,
                           deterministic=True, enable_progress_bar=hparams['enable_progress_bar'])
 

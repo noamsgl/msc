@@ -49,13 +49,13 @@ def embed(job_code, dataset_id, duration, num_channels) -> None:
     ds = get_dataset(dataset_id)
 
     cache_zarr = zarr.open(f"{config['path']['data']}/cache.zarr", 'r')
-    ds_zarr = cache_zarr[f"{self.config['dataset_id']}"]
+    assert f"{config['dataset_id']}" in cache_zarr
+    ds_zarr = cache_zarr[f"{config['dataset_id']}"]
     assert ('mu' in ds_zarr)
     assert ('std' in ds_zarr)
 
-    # TODO: stopped here
-    # TODO: get mu and std from ds_zarr
-    # TODO: normalize data array by subtracting mu and dividing by std
+    mu = ds_zarr['mu'][:]
+    std = ds_zarr['std'][:]
     
     # get times from times zarr
     job_inputs_zarr = zarr.open(f"{config['path']['data']}/job_inputs.zarr", mode='r')
@@ -65,10 +65,13 @@ def embed(job_code, dataset_id, duration, num_channels) -> None:
     cache_zarr = zarr.open(f"{config['path']['data']}/cache.zarr", mode='w')
     for t in times_zarr:
         # initialize t_zarr (a zarray for time t)
-        t_zarr = cache_zarr.create_group(f"{t}")
+        t_zarr = ds_zarr.create_group(f"{t}")
 
         # get data from iEEG.org
         data = ds.get_data(t, duration, np.arange(num_channels))
+
+        # normalize data
+        data = (data - mu)/std
 
         # save data to {t}/data
         data_zarr = t_zarr.zeros('data', shape=data.shape, dtype=data.dtype)
@@ -79,7 +82,7 @@ def embed(job_code, dataset_id, duration, num_channels) -> None:
             cfg = compose(config_name="gp", overrides=[])
             gp : GPEmbeddor = hydra.utils.instantiate(cfg.embeddor)
             # initialize logging directory
-            logger_dirpath = f"{config['path']['lightning_logs']}/{job_code}"
+            logger_dirpath = f"{config['path']['lightning_logs']}/{dataset_id}/{t}"
             embedding = gp.embed(data, logger_dirpath)
             # save embedding to {t}/embedding
             embedding_zarr = t_zarr.zeros('embedding', shape=embedding.shape, dtype=embedding.dtype)

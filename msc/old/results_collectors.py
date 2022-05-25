@@ -21,38 +21,6 @@ class GPResultsCollector:
         self.results_df = results_df
 
     @classmethod
-    def from_csv_logs(cls, logs_dir):
-        """
-        1) get Gaussian Process related requested_params from logs_dir
-        2) parse results into results_df
-        Args:
-            logs_dir:
-            requested_params:
-
-        Returns:
-
-        """
-        all_result_dfs = []
-        for root, dirs, files in tqdm(list(os.walk(logs_dir, topdown=False))):
-            for fname in files:
-                if fname == 'metrics.csv':
-                    path_components = root.split(os.sep)
-                    version = path_components[-1]
-                    experiment_name = path_components[-2]
-                    ch_names = path_components[-3]
-                    clip_name = path_components[-4]
-                    metrics_df = pd.read_csv(os.path.join(root, fname))
-                    result_df = metrics_df.copy().loc[metrics_df['step'].idxmax()]
-                    result_df.loc['ch_names'] = ch_names
-                    result_df.loc['clip_name'] = clip_name
-                    result_df.loc['label_desc'] = get_label_desc_from_fname(clip_name)
-                    result_df.loc['version'] = version
-                    result_df.loc['num_channels'] = len(ch_names.split(','))
-                    all_result_dfs.append(result_df)
-        results_df = pd.concat(all_result_dfs, axis=1).transpose().reset_index(drop=True)
-        return cls(results_df=results_df)
-
-    @classmethod
     def from_clearml(cls, requested_project_name="inference/pairs/Dog_1", requested_params=None,
                      n_pages_limit: Optional[int] = 8,
                      split_version_by_date: Optional = datetime.datetime(year=2022, month=2, day=10)):
