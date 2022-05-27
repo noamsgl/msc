@@ -11,6 +11,7 @@ from msc.datamodules.data_utils import IEEGDataFactory
 import debugpy
 
 from msc.slurm_handler import SlurmHandler
+from msc import get_logger
 
 # print("listening to client on localhost:5678")
 # debugpy.listen(5678)
@@ -36,32 +37,9 @@ class OfflineExperiment:
 
     def __init__(self, config):
       self.config = config
-      self.logger = self.get_logger()
+      self.logger = get_logger()
       self.results = None
     
-    def get_logger(self):
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
-     
-        # create a formatter that creates a single line of json with a comma at the end
-        formatter = logging.Formatter(
-            (
-                '{"unix_time":%(created)s, "time":"%(asctime)s", "module":"%(name)s",'
-                ' "line_no":%(lineno)s, "level":"%(levelname)s", "msg":"%(message)s"},'
-            )
-        )
-        
-        # create a channel for handling the logger and set its format
-        ch = logging.StreamHandler(sys.stderr)
-        ch.setFormatter(formatter)
-
-        # connect the logger to the channel
-        ch.setLevel(logging.INFO)
-        logger.addHandler(ch)
-
-        # send an example message
-        logger.info('logging is working')
-        return logger
 
     def get_dataset(self):
         # get dataset from iEEG.org
@@ -90,7 +68,7 @@ class OfflineExperiment:
             samples.append(data_t)
             nan_count = np.count_nonzero(np.isnan(data_t))
             if nan_count != 0:
-                self.logger.info(f"At time {t} ({idx}/{len(sample_times)}) there are {nan_count}/{data_t.size} ({nan_count/data_t.size:.0f}%) nan entries")
+                self.logger.info(f"At time {t} ({idx}/{len(sample_times)}) there are {nan_count}/{data_t.size} ({100 * nan_count/data_t.size:.0f}%) nan entries")
                 segments_with_nan += 1
         self.logger.info(f"{segments_with_nan=}, total {N=}")
         data = np.vstack(samples)
@@ -99,8 +77,8 @@ class OfflineExperiment:
         std = np.nanstd(data, axis=0)
 
         # save mean and std to cache
-        cache_zarr = zarr.open(f"{self.config['path']['data']}/cache.zarr")
-        ds_zarr = cache_zarr.create_group(f"{self.config['dataset_id']}")
+        cache_zarr = zarr.open(f"{self.config['path']['data']}/cache.zarr", 'a')
+        ds_zarr = cache_zarr.create_group(f"{self.config['dataset_id']}", 'w')
         mu_zarr = ds_zarr.zeros('mu', shape=mu.shape)
         mu_zarr[:] = mu
         std_zarr = ds_zarr.zeros('std', shape=std.shape)
@@ -156,8 +134,10 @@ class OfflineExperiment:
             jobs.append(job_config)
         
         # submit Slurm Jobs
+        self.logger.info(f"submitting {len(jobs)} jobs to SlurmHandler")
         slurm = SlurmHandler(jobname='embed')
-        map(slurm.submitJob, jobs)
+        for job in jobs:
+            slurm.submitJob(job)
 
         # TODO: verify all jobs finished
         # TODO: collect results
@@ -165,6 +145,8 @@ class OfflineExperiment:
         results = None
         if results is not None:
             self.analyze_results(results)
+        self.logger.info(f"experiment ended")
+        self.logger.info(f"{results=}")
         return results
 
 
