@@ -90,6 +90,8 @@ class OfflineExperiment:
         self.logger.info(f"{self.config=}")
         
         # get dataset's mean and std from cache or create if nonexistent
+        mu = None
+        std = None
         ds_stats_are_computed = False
         if os.path.exists(f"{config['path']['data']}/cache.zarr"):
             cache_zarr = zarr.open(f"{config['path']['data']}/cache.zarr", 'r')
@@ -102,6 +104,9 @@ class OfflineExperiment:
 
         if not ds_stats_are_computed:
             mu, std = self.compute_ds_stats()
+        
+        self.logger.info(f"{mu=}")
+        self.logger.info(f"{std=}")
 
         # create times
         times = np.array([5, 10, 15, 20])
@@ -173,7 +178,7 @@ if __name__ == "__main__":
     config_fpath = sys.argv[1]
     config = yaml.safe_load(open(f'{config_fpath}', 'r'))
     print(f"{config=}")
-
+    np.random.seed(config['random_seed'])
     experiment = OfflineExperiment(config)
 
     results = experiment.run()

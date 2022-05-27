@@ -72,7 +72,7 @@ class GPEmbeddor:
                                               verbose=False, mode="min")
 
         
-        trainer = Trainer(max_epochs=self.hparams['n_epochs'], log_every_n_steps=self.hparams['n_epochs']/10, gpus=1, profiler=None,
+        trainer = Trainer(max_epochs=self.hparams['n_epochs'], log_every_n_steps=self.hparams['n_epochs'], gpus=1, profiler=None,
                             callbacks=[early_stop_callback, checkpoint_callback, TQDMProgressBar(refresh_rate=10)], fast_dev_run=self.fast_dev_run,
                             logger=pl_logger, deterministic=True, enable_progress_bar=self.hparams['enable_progress_bar'])
 

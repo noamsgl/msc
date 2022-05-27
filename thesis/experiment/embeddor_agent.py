@@ -20,7 +20,6 @@ def get_dataset(dataset_id):
 
 
 def embed(job_code, dataset_id, duration, num_channels) -> None:
-    logger = get_logger()
     logger.info(f"beginning embedding with {job_code=} {dataset_id=} {duration=} {num_channels=}")
     # get dataset
     ds = get_dataset(dataset_id)
@@ -59,9 +58,10 @@ def embed(job_code, dataset_id, duration, num_channels) -> None:
         data_zarr = t_zarr.zeros('data', shape=data.shape, dtype=data.dtype)
         data_zarr[:] = data
 
-        logger.info(f"{data=}")
+        logger.info(f"{data.shape=}")
         if not np.all(np.isfinite(data)):
-            logger.warn(f"{data=} contains nan entries. skipping.")
+            logger.warning(f"Warning: {data=} contains nan entries. skipping.")
+            continue
 
         # initialize gp
         with initialize(config_path="../../config/embeddor/"):
