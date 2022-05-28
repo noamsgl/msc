@@ -1,5 +1,5 @@
 ---
-FAST_DEV: FALSE
+FAST_DEV: 3
 FAST_DEV_K: 3
 
 dataset_id: I004_A0003_D001

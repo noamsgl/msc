@@ -66,8 +66,9 @@ class GPEmbeddor:
         
         # instantiate pl_logger
         pl_logger = CSVLogger(save_dir=pl_logger_dirpath, name="gp_embedding", version=self.hparams['version'])
-         # instantiate early stopping
-         
+        pl_logger.log_metrics()
+        
+        # instantiate early stopping
         early_stop_callback = MyEarlyStopping(monitor="train_loss", min_delta=0.00, patience=self.hparams['patience'],
                                               verbose=False, mode="min")
 
