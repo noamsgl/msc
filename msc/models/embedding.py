@@ -16,8 +16,9 @@ from msc.logs import get_logger
 from msc.models.model_utils import MyEarlyStopping
 from msc import __version__
 
+
 class GPEmbeddor:
-    def __init__(self, random_seed, num_channels, learning_rate, n_epochs, fast_dev_run, resume_from_checkpoint=False) -> None:
+    def __init__(self, random_seed, num_channels, learning_rate, n_epochs, fast_dev_run, log_every_n_steps, resume_from_checkpoint=False) -> None:
         self.logger = get_logger()
         self.random_seed = random_seed
         self.num_channels = num_channels
@@ -29,6 +30,7 @@ class GPEmbeddor:
                         'num_channels': num_channels,
                         'learning_rate': learning_rate,
                         'n_epochs': n_epochs,
+                        'log_every_n_steps': log_every_n_steps,
                         'patience': 8,
                         'version': __version__,
                         'enable_progress_bar': False,
@@ -66,14 +68,13 @@ class GPEmbeddor:
         
         # instantiate pl_logger
         pl_logger = CSVLogger(save_dir=pl_logger_dirpath, name="gp_embedding", version=self.hparams['version'])
-        pl_logger.log_metrics()
         
         # instantiate early stopping
         early_stop_callback = MyEarlyStopping(monitor="train_loss", min_delta=0.00, patience=self.hparams['patience'],
                                               verbose=False, mode="min")
 
         
-        trainer = Trainer(max_epochs=self.hparams['n_epochs'], log_every_n_steps=self.hparams['n_epochs'], gpus=1, profiler=None,
+        trainer = Trainer(max_epochs=self.hparams['n_epochs'], log_every_n_steps=self.hparams['log_every_n_steps'], gpus=1, profiler=None,
                             callbacks=[early_stop_callback, checkpoint_callback, TQDMProgressBar(refresh_rate=10)], fast_dev_run=self.fast_dev_run,
                             logger=pl_logger, deterministic=True, enable_progress_bar=self.hparams['enable_progress_bar'])
 

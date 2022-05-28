@@ -4,6 +4,7 @@ embeddor:
   num_channels: 2
   learning_rate: 0.01
   n_epochs: 1000
-  fast_dev_run: TRUE
-  resume_from_checkpoint: FALSE
+  log_every_n_steps: 50
+  fast_dev_run: false
+  resume_from_checkpoint: false
         

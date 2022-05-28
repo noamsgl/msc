@@ -1,5 +1,5 @@
 ---
-FAST_DEV: 3
+FAST_DEV: false
 FAST_DEV_K: 3
 
 dataset_id: I004_A0003_D001
@@ -7,6 +7,8 @@ duration: 10
 num_channels: 2
 random_seed: 42
 t_max: 17280000  # 200 days in seconds
+n_jobs: 100
+n_embeddings: 1000
 INDEX_MACHINE: BGUCLUSTER
 RAW_MACHINE: BGUCLUSTER
 RESULTS_MACHINE: BGUCLUSTER

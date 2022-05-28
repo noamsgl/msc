@@ -6,6 +6,9 @@ import re
 import textwrap
 from typing import Tuple
 import zarr
+from msc.logs import get_logger
+
+logger = get_logger()
 
 class SlurmHandler(object):
     """Class to hand submission of jobs to a Slurm cluster"""
@@ -82,6 +85,6 @@ date
         output, err = self._slurmSubmitJob(job_file)
         output_text = output.decode('utf-8')
         jobID = re.sub("\D", "", output_text)
-        print(f"{jobID=}")
+        logger.info(f"submitted {jobID=}")
         return None
 

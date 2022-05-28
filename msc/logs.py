@@ -1,6 +1,8 @@
 import logging
 import sys
 
+from .data_utils import count_nans
+
 def get_logger():
         logger = logging.getLogger(__name__)
         if not logger.handlers:  # for not having duplicate logs
@@ -25,3 +27,8 @@ def get_logger():
         # send an example message
         logger.info('logging is working')
         return logger
+
+
+def nan_report(data):
+    nan_count = count_nans(data)
+    return f"there are {nan_count}/{data.size} ({100 * nan_count/data.size:.0f}%) nan entries"

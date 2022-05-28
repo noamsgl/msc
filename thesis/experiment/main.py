@@ -7,11 +7,13 @@ import numpy as np
 import zarr
 
 from msc.datamodules.data_utils import IEEGDataFactory
+from msc.data_utils import count_nans
 
 import debugpy
 
 from msc.slurm_handler import SlurmHandler
 from msc import get_logger
+from msc.logs import nan_report
 
 # print("listening to client on localhost:5678")
 # debugpy.listen(5678)
@@ -55,7 +57,7 @@ class OfflineExperiment:
         """A function to estimate a dataset's mean and standard deviation per channel"""
         ds = self.get_dataset()
         # initialize sample times
-        sample_times = np.random.randint(0, self.config['t_max'], size=N)
+        sample_times = self.get_sample_times(N)
         sample_times.sort()
         samples = []
         
@@ -66,9 +68,9 @@ class OfflineExperiment:
         for idx, t in enumerate(sample_times):
             data_t = ds.get_data(t, self.config['duration'], np.arange(self.config['num_channels']))
             samples.append(data_t)
-            nan_count = np.count_nonzero(np.isnan(data_t))
+            nan_count = count_nans(data_t)
             if nan_count != 0:
-                self.logger.info(f"At time {t} ({idx}/{len(sample_times)}) there are {nan_count}/{data_t.size} ({100 * nan_count/data_t.size:.0f}%) nan entries")
+                self.logger.info(f"At time {t} ({idx}/{len(sample_times)}) {nan_report(data_t)}")
                 segments_with_nan += 1
         self.logger.info(f"{segments_with_nan=}, total {N=}")
         data = np.vstack(samples)
@@ -84,6 +86,11 @@ class OfflineExperiment:
         std_zarr = ds_zarr.zeros('std', shape=std.shape)
         std_zarr[:] = std
         return mu, std
+
+    def get_sample_times(self, N=200):
+        np.random.seed(self.config['random_seed'])
+        times = np.random.randint(0, self.config['t_max'], size=N)
+        return times
 
     def run(self):
         # begin experiment        
@@ -101,6 +108,7 @@ class OfflineExperiment:
                     ds_stats_are_computed = True
                     mu = ds_zarr['mu'][:]
                     std = ds_zarr['std'][:]
+                    self.logger.info("found mu and std in cache. reusing.")
 
         if not ds_stats_are_computed:
             mu, std = self.compute_ds_stats()
@@ -109,10 +117,11 @@ class OfflineExperiment:
         self.logger.info(f"{std=}")
 
         # create times
-        times = np.array([5, 10, 15, 20])
+        # times = np.array([5, 10, 15, 20])
+        times = self.get_sample_times(N=self.config['n_embeddings'])
 
         # split times into groups (processes)
-        groups = np.split(times, 2)
+        groups = np.split(times, self.config['n_jobs'])
         
         # initialize times array
         root_zarr = zarr.open(f"{config['path']['data']}/job_inputs.zarr", mode='w')
