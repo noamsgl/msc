@@ -11,7 +11,7 @@ from msc.logs import get_logger
 logger = get_logger()
 
 class SlurmHandler(object):
-    """Class to hand submission of jobs to a Slurm cluster"""
+    """Class to handle submission of jobs to a Slurm cluster"""
     def __init__(self, jobname="embed", tmpdir="/home/noamsi/msc/scratch", logdir="/home/noamsi/msc/output", usermail="noamsi@post.bgu.ac.il"):
         self.name = time.strftime("%Y%m%d%H%M%S", time.localtime())
         self.logdir = os.path.abspath(logdir)
@@ -23,7 +23,7 @@ class SlurmHandler(object):
     def _slurmHeader(self, jobname, usermail, output_logs, error_logs) -> str:
         command = f"""#!/bin/bash
 #SBATCH --partition main
-#SBATCH --time 0-03:30:00
+#SBATCH --time 0-06:30:00
 #SBATCH --job-name {jobname}
 #SBATCH -e {error_logs}
 #SBATCH -o {output_logs}

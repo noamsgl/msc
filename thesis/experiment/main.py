@@ -5,6 +5,7 @@ import yaml
 
 import numpy as np
 import zarr
+from msc.config import get_authentication
 
 from msc.datamodules.data_utils import IEEGDataFactory
 from msc.data_utils import count_nans
@@ -91,6 +92,13 @@ class OfflineExperiment:
         np.random.seed(self.config['random_seed'])
         times = np.random.randint(0, self.config['t_max'], size=N)
         return times
+    
+    def get_event_sample_times(self):
+        ds = self.get_dataset()
+        seizures = ds.get_annotations('seizures')
+        seizure_onsets_usec = np.array([seizure.start_time_offset_usec for seizure in seizures])
+        seizure_onsets = seizure_onsets_usec / 1e6
+        return seizure_onsets.astype(int)
 
     def run(self):
         # begin experiment        
@@ -118,10 +126,11 @@ class OfflineExperiment:
 
         # create times
         # times = np.array([5, 10, 15, 20])
-        times = self.get_sample_times(N=self.config['n_embeddings'])
-
+        # times = self.get_sample_times(N=self.config['n_embeddings'])
+        times = self.get_event_sample_times()
+        times = np.concatenate([times, times-5, times-10, times-15, times-20, times-25, times-30])
         # split times into groups (processes)
-        groups = np.split(times, self.config['n_jobs'])
+        groups = np.array_split(times, self.config['n_jobs'])
         
         # initialize times array
         root_zarr = zarr.open(f"{config['path']['data']}/job_inputs.zarr", mode='w')

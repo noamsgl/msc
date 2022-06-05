@@ -47,7 +47,8 @@ def embed(job_code, dataset_id, duration, num_channels) -> None:
     for t in times_zarr:
         logger.info(f"beginning embedding of time {t=}")
         # initialize t_zarr (a zarray for time t)
-        t_zarr = ds_zarr.create_group(f"{t}")
+        subgroup_zarr = ds_zarr["events"]
+        t_zarr = subgroup_zarr.create_group(f"{t}")
 
         # get data from iEEG.org
         data = ds.get_data(t, duration, np.arange(num_channels))
