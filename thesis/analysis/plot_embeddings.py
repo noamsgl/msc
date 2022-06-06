@@ -7,42 +7,12 @@ import seaborn as sns
 import zarr
 
 from msc import config
+from msc.cache_handler import get_samples_df
 from thesis.experiment.main import OfflineExperiment
 
 figures_path = r"results/figures"
 
-cache_path = r"data/cache.zarr"
-
-cache_zarr = zarr.open(cache_path, 'r')
-
-ds_zarr = cache_zarr[f"{config['dataset_id']}"]
-
-# collect embeddings from ds_zarr
-embeddings = []
-exclude_groups = ['std', 'mu', 'events']
-samples_df = []
-for key in sorted([int(k) for k in ds_zarr.keys() if k not in exclude_groups]):
-    time_zarr = ds_zarr[f'{key}']
-    if 'embedding' in time_zarr:
-        embedding = time_zarr['embedding'][1:9]
-        embeddings.append(embedding)
-        data = {"time": key,
-                "embedding": embedding}
-        samples_df.append(data)
-
-# collect embeddings from events_zarr
-events_zarr = ds_zarr['events']
-for key in sorted([int(k) for k in events_zarr.keys() if k not in exclude_groups]):
-    time_zarr = events_zarr[f'{key}']
-    if 'embedding' in time_zarr:
-        embedding = time_zarr['embedding'][1:9]
-        embeddings.append(embedding)
-        data = {"time": key,
-                "embedding": embedding}
-        samples_df.append(data)
-
-# create samples_df DataFrame
-samples_df = pd.DataFrame(samples_df)
+samples_df = get_samples_df(config['dataset_id'], with_events=True)  # type: ignore
 
 # compute time to event and add to samples_df
 experiment = OfflineExperiment(config)
@@ -68,12 +38,12 @@ samples_df['class'] = samples_df['time_to_event'].apply(lambda x: x if x <= 5 el
 plt.clf()
 samples_df['time_to_event'].hist()
 plt.title('time to event')
-plt.savefig(f"{figures_path}/hist.pdf", bbox_inches='tight')
+plt.savefig(f"{figures_path}/embeddings/hist.pdf", bbox_inches='tight')
 
 plt.clf()
 plt.style.use(['science', 'no-latex'])
 sns.scatterplot(data=samples_df, x='pca-2d-one', y='pca-2d-two', hue='class', palette='crest').set(title='Embeddings', xlabel="PC1", ylabel="PC2")
-plt.savefig(f"{figures_path}/embeddings.pdf", bbox_inches='tight')
+plt.savefig(f"{figures_path}/embeddings/embeddings.pdf", bbox_inches='tight')
 
 # plt.clf()
 # plt.savefig(f"{figures_path}/temp.pdf", bbox_inches='tight')

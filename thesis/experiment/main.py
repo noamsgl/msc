@@ -30,11 +30,11 @@ class OfflineExperiment:
     * Each agents script
     * connect to dataset
     * 
-    * save & load data to disk               # perhaps hdf5
+    * save & load data to disk               # zarr
     * transform dataset z(x) for all x       # GP embedding transformation
-    * estimate density p(z)                  # GMM
+    * estimate density p(z)                  # GMM to joblib
     * extract novelty score n(x)             # p-value
-    * init prior p(S)                        # PyroModule
+    * init prior p(S)                        # perhaps PyroModule
     * dump state
     """
 
@@ -89,6 +89,7 @@ class OfflineExperiment:
         return mu, std
 
     def get_sample_times(self, N=200):
+        """subsample uniformly N time points between 0 and config['t_max']"""
         np.random.seed(self.config['random_seed'])
         times = np.random.randint(0, self.config['t_max'], size=N)
         return times
@@ -97,10 +98,13 @@ class OfflineExperiment:
         ds = self.get_dataset()
         seizures = ds.get_annotations('seizures')
         seizure_onsets_usec = np.array([seizure.start_time_offset_usec for seizure in seizures])
-        seizure_onsets = seizure_onsets_usec / 1e6
-        return seizure_onsets.astype(int)
+        # convert usec to sec
+        times = seizure_onsets_usec / 1e6
+        # append pre-ictal segments
+        times = np.concatenate([times, times-5, times-10, times-15, times-20, times-25, times-30])
+        return times.astype(int)
 
-    def run(self):
+    def run(self, into_events=False):
         # begin experiment        
         self.logger.info(f"{self.config=}")
         
@@ -125,10 +129,11 @@ class OfflineExperiment:
         self.logger.info(f"{std=}")
 
         # create times
-        # times = np.array([5, 10, 15, 20])
-        # times = self.get_sample_times(N=self.config['n_embeddings'])
-        times = self.get_event_sample_times()
-        times = np.concatenate([times, times-5, times-10, times-15, times-20, times-25, times-30])
+        if into_events:
+            times = self.get_event_sample_times()
+        else:
+            times = self.get_sample_times(N=self.config['n_embeddings'])
+
         # split times into groups (processes)
         groups = np.array_split(times, self.config['n_jobs'])
         
@@ -137,46 +142,58 @@ class OfflineExperiment:
 
         # initialize jobs array
         jobs = []
-
+        job_code = 0
         # for each group of times, submit a Slurm job
-        for job_code, job_times in enumerate(groups):
-            # input times data
-            job_zarr = root_zarr.create_group(str(job_code))
+        for job_times in groups:
+            # persist job times in cache
+            job_zarr = root_zarr.require_group(str(job_code))
             times_zarr = job_zarr.zeros('times', shape=job_times.shape, dtype='i8')
             times_zarr[:] = job_times
 
             # create job configuration
             job_config = {
+                "job_name": "embed",
                 "job_code": job_code,
                 "job_times": job_times,
                 "dataset_id": self.config['dataset_id'],
                 "duration": self.config['duration'],
-                "num_channels": self.config['num_channels']
+                "num_channels": self.config['num_channels'],
+                "into_events": into_events,
+                "gpus": 1
             }
             # add job to jobs
             jobs.append(job_config)
+            # increase job_code
+            job_code += 1
         
         # submit Slurm Jobs
-        self.logger.info(f"submitting {len(jobs)} jobs to SlurmHandler")
-        slurm = SlurmHandler(jobname='embed')
-        for job in jobs:
-            slurm.submitJob(job)
+        slurm = SlurmHandler()
+        self.logger.info(f"submitting {len(jobs)} embed jobs to SlurmHandler.")
+        jobIDs = []  # for keeping track of dependencies
+        for job_config in jobs:
+            jobID = slurm.submitJob(job_config)
+            jobIDs.append(jobID)
 
-        # TODO: verify all jobs finished
-        # TODO: collect results
-        # TODO: analyze results
-        results = None
-        if results is not None:
-            self.analyze_results(results)
-        self.logger.info(f"experiment ended")
-        self.logger.info(f"{results=}")
+        # submit analysis job
+        job_config = {
+            "job_name": "calc_likelihood",
+            "job_code": job_code,
+            "dataset_id": self.config['dataset_id'],
+            "dependencies": jobIDs,
+            "gpus": 1  # in order to be on same cluster as prev jobs
+        }
+
+        self.logger.info(f"submitting calc_likelihood job with {job_code=} to SlurmHandler.")
+        slurm.submitJob(job_config)
+
+        self.logger.info(f"all OfflineExperiment jobs submitted.")
         return results
 
 
 
 class OnlineExperiment:
-    """ This class orchestrates the online experiment from start to finish.
-    The online eperiment consists of:
+    """ This class orchestrates the online experiment.
+    The online experiment consists of:
     * load state
     * init times
     * for t in times:

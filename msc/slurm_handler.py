@@ -58,8 +58,9 @@ date
             dataset_id = job_config['dataset_id']
             duration = job_config['duration']
             num_channels = job_config['num_channels']
+            into_events = job_config['into_events']
             # assemble command
-            command = f"python ~/msc/thesis/experiment/embeddor_agent.py {job_code} {dataset_id} {duration} {num_channels}"
+            command = f"python ~/msc/thesis/experiment/embeddor_agent.py {job_code} {dataset_id} {duration} {num_channels} {'--into-events' if into_events else ''}"
 
         elif job_config['job_name'] == "calc_likelihood":
             # unpack job_config

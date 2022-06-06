@@ -1,8 +1,8 @@
 import zarr
 
-z = zarr.open('data/storage.zarr')
+z = zarr.open('data/cache.zarr')
 
 z.info
 
-# TODO: add %jobid print to log
-# TODO: add early stopping
+# TODO: move std,mu to zarr attrs
+print("Hello world")
