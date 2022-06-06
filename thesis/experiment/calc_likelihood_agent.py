@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from joblib import dump
 import numpy as np
@@ -19,7 +20,9 @@ def calc_likelihood(dataset_id) -> None:
     clf = mixture.GaussianMixture(n_components=2, covariance_type="full")
     clf.fit(np.stack(samples_df['embedding']))  # type: ignore
 
-    gmm_path = f"{config['path']['data']}/dataset_id/GMM.joblib"
+    dataset_dir = f"{config['path']['data']}/{dataset_id}"
+    os.makedirs(dataset_dir, exist_ok=True)
+    gmm_path = f"{dataset_dir}/GMM.joblib"
     logger.info(f"persisting GMM to disk at {gmm_path}")
     dump(clf, gmm_path)
 

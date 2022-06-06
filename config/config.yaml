@@ -31,3 +31,4 @@ path:
   root: /cs_storage/noamsi/msc
   results: /cs_storage/noamsi/results
   lightning_logs: /cs_storage/noamsi/msc/output/lightning_logs
+  figures: /cs_storage/noamsi/msc/results/figures
