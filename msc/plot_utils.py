@@ -1,5 +1,5 @@
 
-def set_size(width, fraction=1):
+def set_size(width, fraction=1, height_scale=1):
     """Set figure dimensions to avoid scaling in LaTeX.
 
     Parameters
@@ -8,6 +8,8 @@ def set_size(width, fraction=1):
             Document textwidth or columnwidth in pts
     fraction: float, optional
             Fraction of the width which you wish the figure to occupy
+    height_scale: float, optional
+            Fraction of the golden_ratio you wish the aspect of the figure to have
 
     Returns
     -------
@@ -27,7 +29,7 @@ def set_size(width, fraction=1):
     # Figure width in inches
     fig_width_in = fig_width_pt * inches_per_pt
     # Figure height in inches
-    fig_height_in = fig_width_in * golden_ratio
+    fig_height_in = fig_width_in * golden_ratio * height_scale
 
     fig_dim = (fig_width_in, fig_height_in)
 

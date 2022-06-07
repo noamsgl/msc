@@ -94,14 +94,15 @@ class OfflineExperiment:
         times = np.random.randint(0, self.config['t_max'], size=N)
         return times
     
-    def get_event_sample_times(self):
+    def get_event_sample_times(self, augment=True):
         ds = self.get_dataset()
         seizures = ds.get_annotations('seizures')
         seizure_onsets_usec = np.array([seizure.start_time_offset_usec for seizure in seizures])
         # convert usec to sec
         times = seizure_onsets_usec / 1e6
         # append pre-ictal segments
-        times = np.concatenate([times, times-5, times-10, times-15, times-20, times-25, times-30])
+        if augment:
+            times = np.concatenate([times, times-5, times-10, times-15, times-20, times-25, times-30])
         return times.astype(int)
 
     def run(self, into_events=False):
