@@ -59,7 +59,7 @@ def plot(width):
     CB = plt.colorbar(CS, location="bottom",ticks = SymmetricalLogLocator(linthresh=0.03, base=10, subs=range(10)))
     # CB.ax.minorticks_off()
 
-    # CB.set_label("Negative log-likelihood")
+    CB.set_label("log-likelihood")
     # plt.scatter(X[:, 0], X[:, 1], 0.8)
 
     # add axes annotations

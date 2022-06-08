@@ -1,5 +1,6 @@
 import datetime
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from msc import config
@@ -30,6 +31,61 @@ def get_events_df(events) -> pd.DataFrame:
     events_df['second'] = events_df['datetime'].dt.second
     return events_df
 
+
+def plot_bar_histogram(width):
+    plt.clf()
+    # prepare figure
+    fig = plt.figure(figsize=set_size(width))
+
+    plt.bar(range(N), circadian_hist, align='edge')
+    ax = plt.gca()
+    ax.set_facecolor('lightyellow')
+    plt.grid()
+    # add base rate
+    plt.plot(np.linspace(0, N, 100), np.ones(100)*sum(circadian_hist)/N, color='darkorange', linestyle='dashed', lw=2, label='base rate')
+    plt.xlim(0, N)
+    plt.title("Circadian Seizure Distribution")
+    plt.savefig(f"{config['path']['figures']}/prior/hist.pdf", bbox_inches='tight')
+
+
+def plot_polar_histogram(fig_width):
+    plt.clf()
+
+    # prepare figure
+    fig = plt.figure(figsize=set_size(fig_width))
+    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8], projection='polar', facecolor='white')
+
+    # initialize seizure distribution as periodical
+    half_hour_offset = (1/2) * (1/N) * 2 * np.pi
+    theta = np.linspace(0.0 + half_hour_offset, 2 * np.pi + half_hour_offset, N, endpoint=False)
+    radii = circadian_hist
+    width = 2 * np.pi / N
+
+    # define axis
+    ax = plt.subplot(111, projection='polar', facecolor='lightyellow')
+
+    # plot seizures
+    bars = ax.bar(theta, radii, width=width, bottom=0.0, label='events per hour', color='royalblue')
+
+    # make the labels start at North
+    ax.set_theta_zero_location('N')
+
+    # make the labels go clockwise
+    ax.set_theta_direction(-1)
+
+    # clock labels
+    ax.set_xticks(np.linspace(0, 2*np.pi, 24, endpoint=False))
+    ax.set_xticklabels(range(24))
+
+    # add base rate
+    ax.plot(np.linspace(0, 2*np.pi, 100), np.ones(100)*sum(circadian_hist)/N, color='darkorange', linestyle='dashed', lw=2, label='base rate')
+
+    # add legend
+    ax.legend(fancybox=True, bbox_to_anchor=(0.5, -0.05))
+    # plt.title("Circadian Seizure Distribution")
+    plt.savefig(f"{config['path']['figures']}/prior/polar_hist.pdf", bbox_inches='tight')
+
+
 if __name__ == "__main__":
     ds = get_dataset(config['dataset_id'])
     start_time = datetime.datetime.fromtimestamp(ds.start_time / SEC, datetime.timezone.utc)
@@ -38,11 +94,9 @@ if __name__ == "__main__":
     events =  [start_time + datetime.timedelta(microseconds=seizure.start_time_offset_usec) for seizure in seizures]
     
     events_df = get_events_df(events)
+    circadian_hist = pd.cut(events_df.hour, 24, labels=range(24)).value_counts().sort_index()
+    N = 24
 
-    plt.clf()
     width = 478  #pt
-    events_df.hist('hour', bins=24, figsize=set_size(width))
-    plt.title("Circadian Seizure Distribution")
-    plt.savefig(f"{config['path']['figures']}/prior/hist.pdf", bbox_inches='tight')
-
-
+    plot_bar_histogram(width)
+    plot_polar_histogram(width)
