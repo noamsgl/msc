@@ -1,7 +1,10 @@
 import datetime
+from functools import partial
+from turtle import color
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.special import i0
 
 from msc import config
 from msc.datamodules.data_utils import IEEGDataFactory
@@ -86,6 +89,47 @@ def plot_polar_histogram(fig_width):
     plt.savefig(f"{config['path']['figures']}/prior/polar_hist.pdf", bbox_inches='tight')
 
 
+def vmdensity(x, mu=0, k=0.6):
+    """von mises density function"""
+    omega = 2 * np.pi/N
+    return np.exp(k * np.cos(omega * (x - mu)))/(2 * np.pi * i0(k))
+
+def plot_vmdensity(width, mu=8, k=0.6):
+    X = np.linspace(0, 24, 100)
+    y = vmdensity(X, mu=mu, k=k)
+
+    # vm_mixture = lambda x: sum([circadian_hist[i] * partial(vmdensity, mu=mu)(x) for i, mu in enumerate(mus)])
+    
+    # prepare figure
+    fig = plt.figure(figsize=set_size(width))
+    plt.plot(X, y, label='density $f(x | \mu, \kappa ; \omega)$')
+    plt.vlines([mu], min(y), max(y), linestyles='dashed', colors='orange', lw=2, label=f'$\mu={mu}$')
+    # plt.plot(y)
+    plt.xlabel('x')
+    extraticks = [mu, N]
+    plt.xticks([0, 6, 12, 18, 24] + extraticks)
+    plt.xlim(0, N)
+    plt.legend()
+    plt.savefig(f"{config['path']['figures']}/prior/vm_density.pdf", bbox_inches='tight')
+
+
+def plot_von_mises_prior(width):
+    X = np.linspace(0, 24, 100)
+    y = vmdensity(X)
+    weights = circadian_hist
+    mus = np.arange(N) + 0.5
+
+    vm_mixture = lambda x: sum([circadian_hist[i] * partial(vmdensity, mu=mu)(x) for i, mu in enumerate(mus)])
+    
+    # prepare figure
+    fig = plt.figure(figsize=set_size(width))
+    plt.plot(X, y)
+    # plt.plot(y)
+    plt.xlabel('walltime')
+
+    plt.savefig(f"{config['path']['figures']}/prior/vm_prior.pdf", bbox_inches='tight')
+
+
 if __name__ == "__main__":
     ds = get_dataset(config['dataset_id'])
     start_time = datetime.datetime.fromtimestamp(ds.start_time / SEC, datetime.timezone.utc)
@@ -98,5 +142,7 @@ if __name__ == "__main__":
     N = 24
 
     width = 478  #pt
-    plot_bar_histogram(width)
-    plot_polar_histogram(width)
+    # plot_bar_histogram(width)
+    # plot_polar_histogram(width)
+    plot_vmdensity(width)
+    plot_von_mises_prior(width)
