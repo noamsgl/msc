@@ -2,6 +2,8 @@
 FAST_DEV: false
 FAST_DEV_K: 3
 
+# dataset_id: I004_A0001_D001
+# dataset_id: I004_A0002_D001
 dataset_id: I004_A0003_D001
 duration: 10
 num_channels: 2

@@ -36,11 +36,10 @@ def get_events_df(events) -> pd.DataFrame:
 
 
 def plot_bar_histogram(width):
-    plt.clf()
     # prepare figure
     fig = plt.figure(figsize=set_size(width))
 
-    plt.bar(range(N), circadian_hist, align='edge')
+    plt.bar(range(N), circadian_hist, align='edge', color='royalblue', label='data')
     ax = plt.gca()
     ax.set_facecolor('lightyellow')
     plt.grid()
@@ -49,11 +48,10 @@ def plot_bar_histogram(width):
     plt.xlim(0, N)
     plt.title("Circadian Seizure Distribution")
     plt.savefig(f"{config['path']['figures']}/prior/hist.pdf", bbox_inches='tight')
+    return plt.gcf()
 
 
 def plot_polar_histogram(fig_width):
-    plt.clf()
-
     # prepare figure
     fig = plt.figure(figsize=set_size(fig_width))
     ax = fig.add_axes([0.1, 0.1, 0.8, 0.8], projection='polar', facecolor='white')
@@ -89,60 +87,71 @@ def plot_polar_histogram(fig_width):
     plt.savefig(f"{config['path']['figures']}/prior/polar_hist.pdf", bbox_inches='tight')
 
 
-def vmdensity(x, mu=0, k=0.6):
+def vmdensity(x, mu, k=1/0.6):
     """von mises density function"""
     omega = 2 * np.pi/N
     return np.exp(k * np.cos(omega * (x - mu)))/(2 * np.pi * i0(k))
 
-def plot_vmdensity(width, mu=8, k=0.6):
-    X = np.linspace(0, 24, 100)
+def plot_vmdensity(width, mu=8, k=1/0.6):
+    X = np.linspace(0, N, 100)
     y = vmdensity(X, mu=mu, k=k)
 
-    # vm_mixture = lambda x: sum([circadian_hist[i] * partial(vmdensity, mu=mu)(x) for i, mu in enumerate(mus)])
-    
     # prepare figure
     fig = plt.figure(figsize=set_size(width))
     plt.plot(X, y, label='density $f(x | \mu, \kappa ; \omega)$')
-    plt.vlines([mu], min(y), max(y), linestyles='dashed', colors='orange', lw=2, label=f'$\mu={mu}$')
-    # plt.plot(y)
+    plt.fill_between(X, y, color='lightyellow')
+    plt.vlines([mu], 0, max(y), linestyles='dashed', colors='orange', lw=2, label=f'$\mu={mu}$')
     plt.xlabel('x')
     extraticks = [mu, N]
     plt.xticks([0, 6, 12, 18, 24] + extraticks)
     plt.xlim(0, N)
+    plt.ylim(bottom=0)
     plt.legend()
     plt.savefig(f"{config['path']['figures']}/prior/vm_density.pdf", bbox_inches='tight')
 
 
-def plot_von_mises_prior(width):
-    X = np.linspace(0, 24, 100)
-    y = vmdensity(X)
-    weights = circadian_hist
-    mus = np.arange(N) + 0.5
-
-    vm_mixture = lambda x: sum([circadian_hist[i] * partial(vmdensity, mu=mu)(x) for i, mu in enumerate(mus)])
-    
+def plot_von_mises_prior(width, fig=None):
     # prepare figure
-    fig = plt.figure(figsize=set_size(width))
-    plt.plot(X, y)
-    # plt.plot(y)
-    plt.xlabel('walltime')
+    if fig is None: 
+        fig = plt.figure(figsize=set_size(width))
+    else:
+        plt.figure(fig)
+    mus = np.arange(N) + 0.5
+    vm_mixture = lambda x: sum([circadian_hist[i] * partial(vmdensity, mu=mu)(x) for i, mu in enumerate(mus)])
+    X = np.linspace(0, 24, 100)
+    y = vm_mixture(X)
 
-    plt.savefig(f"{config['path']['figures']}/prior/vm_prior.pdf", bbox_inches='tight')
+    plt.plot(X, y, label='v.M. prior')
+    # plt.plot(y)
+    # ax.set_xlabel('walltime')
+    legend = plt.legend(loc='upper right', framealpha=1)
+    # TODO: fix facecolor to white
+    frame = legend.get_frame()
+    frame.set_facecolor('white')
+    plt.xlabel("time")
+    plt.title("")
+    fig.savefig(f"{config['path']['figures']}/prior/vm_prior.pdf", bbox_inches='tight')
+    return(fig)
 
 
 if __name__ == "__main__":
-    ds = get_dataset(config['dataset_id'])
-    start_time = datetime.datetime.fromtimestamp(ds.start_time / SEC, datetime.timezone.utc)
-
-    seizures = ds.get_annotations('seizures')
-    events =  [start_time + datetime.timedelta(microseconds=seizure.start_time_offset_usec) for seizure in seizures]
-    
-    events_df = get_events_df(events)
-    circadian_hist = pd.cut(events_df.hour, 24, labels=range(24)).value_counts().sort_index()
+    # define number of bins
     N = 24
-
+    # get dataset
+    ds = get_dataset(config['dataset_id'])
+    # get dataset's start time
+    start_time = datetime.datetime.fromtimestamp(ds.start_time / SEC, datetime.timezone.utc)
+    # get dataset's seizure annotations
+    seizures = ds.get_annotations('seizures')
+    # convert annotations to event datetimes
+    events =  [start_time + datetime.timedelta(microseconds=seizure.start_time_offset_usec) for seizure in seizures]
+    # create events_df
+    events_df = get_events_df(events)
+    # compute events circadian histogram
+    circadian_hist = pd.cut(events_df.hour, N, labels=range(N)).value_counts().sort_index()
+    
     width = 478  #pt
-    # plot_bar_histogram(width)
-    # plot_polar_histogram(width)
+    fig = plot_bar_histogram(width)
+    plot_polar_histogram(width)
     plot_vmdensity(width)
-    plot_von_mises_prior(width)
+    plot_von_mises_prior(width, fig)
