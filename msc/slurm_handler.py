@@ -17,19 +17,21 @@ class SlurmHandler(object):
         self.logdir = os.path.abspath(logdir)
         self.usermail = usermail
         self.tmpdir = tmpdir
+        self.mail_type = "ALL"
+        # self.mail_type = "NONE"
 
 
     def _slurmHeader(self, jobname, usermail, output_logs, error_logs, gpus) -> str:
         command = f"""#!/bin/bash
 #SBATCH --partition main
-#SBATCH --time 0-06:30:00
+#SBATCH --time 6-23:30:00
 #SBATCH --job-name {jobname}
 #SBATCH -e {error_logs}
 #SBATCH -o {output_logs}
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mail-user={usermail}
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type={self.mail_type}
 #SBATCH --gpus={gpus}				### number of GPUs, allocating more than 1 requires IT team's permission
 
 echo -e "\\nSLURM_JOBID:\\t\\t" $SLURM_JOBID

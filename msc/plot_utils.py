@@ -1,5 +1,5 @@
 
-def set_size(width, fraction=1, height_scale=1):
+def set_size(width, fraction=1., height_scale=1.):
     """Set figure dimensions to avoid scaling in LaTeX.
 
     Parameters

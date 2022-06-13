@@ -1,25 +1,25 @@
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import pandas as pd
 import seaborn as sns
-import zarr
 
 from msc import config
 from msc.cache_handler import get_samples_df
+from msc.data_utils import get_config_dataset, get_event_sample_times
 from msc.plot_utils import set_size
-from thesis.experiment.main import OfflineExperiment
 
 
 def plot(width):
         figures_path = r"results/figures"
-
+        
+        # load samples_df
         samples_df = get_samples_df(config['dataset_id'], with_events=True)  # type: ignore
 
+        # get ds
+        ds = get_config_dataset()
         # compute time to event and add to samples_df
-        experiment = OfflineExperiment(config)
-        events = experiment.get_event_sample_times(augment=False)
+        events = get_event_sample_times(ds, augment=False)
         events_df = pd.DataFrame(events, columns=['onset'])
         events_df = events_df.sort_values(by='onset', ignore_index=True)
         samples_df = samples_df.sort_values(by='time', ignore_index=True)

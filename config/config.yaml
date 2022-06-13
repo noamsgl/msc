@@ -10,7 +10,8 @@ num_channels: 2
 random_seed: 42
 t_max: 17280000  # 200 days in seconds
 n_jobs: 100
-n_embeddings: 1000
+n_embeddings: 3000
+n_ds_stats: 1000
 INDEX_MACHINE: BGUCLUSTER
 RAW_MACHINE: BGUCLUSTER
 RESULTS_MACHINE: BGUCLUSTER

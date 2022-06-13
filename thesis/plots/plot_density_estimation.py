@@ -1,6 +1,3 @@
-import joblib
-from matplotlib import axes, ticker
-from matplotlib.colors import LogNorm
 from matplotlib.colors import SymLogNorm
 from matplotlib.ticker import LogFormatter 
 from matplotlib.ticker import SymmetricalLogLocator
@@ -16,12 +13,6 @@ from msc.plot_utils import set_size
 
 def plot(width):
     plt.style.use(['science', 'no-latex'])
-
-    # for preloaded clf (need to adapt to PCA)
-    # dataset_id = config['dataset_id']
-    # dataset_dir = dataset_dir = f"{config['path']['data']}/{dataset_id}"
-    # gmm_path = f"{dataset_dir}/GMM.joblib"
-    # clf = joblib.load(gmm_path)
 
     # get samples_df
     samples_df = get_samples_df(config['dataset_id'], with_events=True)  # type: ignore
