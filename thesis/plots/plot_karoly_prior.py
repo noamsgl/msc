@@ -9,6 +9,7 @@ from scipy.special import i0
 from msc import config
 from msc.datamodules.data_utils import IEEGDataFactory
 from msc.plot_utils import set_size
+from msc.prior_utils import get_events_df
 
 plt.style.use(['science', 'no-latex'])
 
@@ -24,15 +25,6 @@ def get_dataset(dataset_id):
 def karoly_prior(t):
     ds = get_dataset(config['dataset_id'])
 
-def get_events_df(events) -> pd.DataFrame:
-    events_df = pd.DataFrame(events, columns=['datetime'])
-    events_df['year'] = events_df['datetime'].dt.year
-    events_df['month'] = events_df['datetime'].dt.month
-    events_df['day'] = events_df['datetime'].dt.day
-    events_df['hour'] = events_df['datetime'].dt.hour
-    events_df['minute'] = events_df['datetime'].dt.minute
-    events_df['second'] = events_df['datetime'].dt.second
-    return events_df
 
 
 def plot_bar_histogram(width):
@@ -144,7 +136,7 @@ if __name__ == "__main__":
     # get dataset's seizure annotations
     seizures = ds.get_annotations('seizures')
     # convert annotations to event datetimes
-    events =  [start_time + datetime.timedelta(microseconds=seizure.start_time_offset_usec) for seizure in seizures]
+    events = [start_time + datetime.timedelta(microseconds=seizure.start_time_offset_usec) for seizure in seizures]
     # create events_df
     events_df = get_events_df(events)
     # compute events circadian histogram
