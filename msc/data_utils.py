@@ -1,8 +1,10 @@
 import numpy as np
 from numpy.random import default_rng
 
+from ieegpy.ieeg.auth import Session
+from ieegpy.ieeg.dataset import Dataset
+from msc.config import get_authentication
 from msc import config
-from .datamodules.data_utils import IEEGDataFactory
 
 def count_nans(data):
     """return count of nan entries"""
@@ -12,11 +14,28 @@ def prop_nans(data):
     """"return proportion of nan entries"""
     return count_nans(data) / data.size
 
+class IEEGDataFactory:
+    def __init__(self, dataset_id) -> None:
+        self.dataset_id = dataset_id
+        
+    @classmethod 
+    def get_dataset(cls, dataset_id) -> Dataset:
+        username, password = get_authentication()
+        with Session(username, password) as s:# start streaming session
+            ds = s.open_dataset(dataset_id)  # open dataset stream
+        return ds
+
 def get_config_dataset():
     # get dataset from iEEG.org
     ds_id = config['dataset_id']
     ds = IEEGDataFactory.get_dataset(ds_id)
     return ds
+
+def get_dataset(dataset_id):
+    # get dataset from iEEG.org
+    ds = IEEGDataFactory.get_dataset(dataset_id)
+    return ds
+
 
 def get_sample_times(N, mode, t_end=None) -> np.ndarray:
     """subsample uniformly N time points between 0 and t_max or from t_max to t_end"""

@@ -52,6 +52,7 @@ class BSLE(BaseEstimator):
         """
         # Check that X and y have correct shape
         X = self._validate_data(X)
+        # X, y = check_X_y(X, y)
         self.X_ = X
         self.is_fitted_ = True
 
@@ -64,11 +65,17 @@ class BSLE(BaseEstimator):
 
         # compute p-values
         percentiles = np.array([percentileofscore(likelihoods, i) for i in likelihoods])
+        p_values = percentiles / 100
+
+        cutoff = np.percentile(p_values, self.thresh * 100)
 
         # divide into inliers and outliers
-        inliers = X[percentiles < self.thresh]
-        outliers = X[percentiles >= self.thresh]
+        inliers = X[p_values <= cutoff]
+        outliers = X[p_values > cutoff]
 
+        assert len(inliers) > 1, f"error: {len(inliers)=} must be greater than 1. try changing thresh"
+        assert len(outliers) > 1, f"error: {len(outliers)=} must be greater than 1. try changing thresh"
+        
         # compute density for each
         self.inlier_de_ = mixture.GaussianMixture(n_components=4, covariance_type="full")
         self.outlier_de_ = mixture.GaussianMixture(n_components=4, covariance_type="full")
@@ -76,7 +83,8 @@ class BSLE(BaseEstimator):
         self.outlier_de_.fit(outliers)
 
         # initialize prior
-        self.prior_ = self._get_vm_prior(prior_events)
+        if prior_events is not None:
+            self.prior_ = self._get_vm_prior(prior_events)
 
         # Return the classifier
         return self
@@ -132,14 +140,23 @@ class BSLE(BaseEstimator):
         if samples_times is not None:
             assert len(X) == len(samples_times), f"error: length mismatch, {len(X)} != {len(samples_times)}"
 
-        likelihoods = self.outlier_de_.score_samples(X)
+        log_likelihoods = self.outlier_de_.score_samples(X)
+        log_likelihoods_training = self.outlier_de_.score_samples(self.X_)
+        # compute p-values
+        percentiles = np.array([percentileofscore(log_likelihoods_training, i) for i in log_likelihoods])
+        p_values = percentiles / 100
+        novelties = p_values
 
         if samples_times is None:
-            return likelihoods
+            return novelties
         else:
-            priors = np.array([self.prior_(t) for t in samples_times])
-            evidence = self.outlier_de_.score_samples(X) * priors + self.inlier_de_.score_samples(X) * (1 - priors)
-            return priors * likelihoods / evidence
+            if self.prior_ is None:
+                print("no prior function found. returning likelihoods")
+                return novelties
+            else:
+                priors = np.array([self.prior_(t) for t in samples_times])
+                evidence = self.outlier_de_.score_samples(X) * priors + self.inlier_de_.score_samples(X) * (1 - priors)
+                return priors * novelties / evidence
 
     def predict(self, X):
         """ prediction for a classifier.

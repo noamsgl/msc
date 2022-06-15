@@ -6,15 +6,10 @@ import numpy as np
 import zarr
 
 from msc import config
+from msc.data_utils import get_dataset
 from msc.models.embedding import GPEmbeddor
-from msc.datamodules.data_utils import IEEGDataFactory
 from msc import get_logger
 from msc.logs import nan_report
-
-def get_dataset(dataset_id):
-    # get dataset from iEEG.org
-    ds = IEEGDataFactory.get_dataset(dataset_id)
-    return ds
 
 
 def embed(job_code, dataset_id, duration, num_channels, into_events) -> None:
