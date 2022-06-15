@@ -1,4 +1,5 @@
 from torch import Tensor
+from torch.utils.data import Dataset
 
 
 class SingleSampleDataset(Dataset):

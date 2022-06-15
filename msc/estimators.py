@@ -8,7 +8,7 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels
 from sklearn.metrics import euclidean_distances
 
-from .prior_utils import vm_density, events_to_circadian_hist
+from .prior_utils import vm_density, event_times_to_circadian_hist
 
 SEC = 1e6
 MIN = 60 * SEC
@@ -83,7 +83,9 @@ class BSLE(BaseEstimator):
         self.outlier_de_.fit(outliers)
 
         # initialize prior
-        if prior_events is not None:
+        if prior_events is None:
+            self.prior_ = None
+        else:
             self.prior_ = self._get_vm_prior(prior_events)
 
         # Return the classifier
@@ -101,7 +103,7 @@ class BSLE(BaseEstimator):
         -------
 
         """
-        circadian_hist = events_to_circadian_hist(prior_events)  # ensure only past events affect current prior
+        circadian_hist = event_times_to_circadian_hist(prior_events)[0]  # ensure only past events affect current prior
 
         def vm_prior(t: float):
             """
@@ -120,7 +122,7 @@ class BSLE(BaseEstimator):
             def vm_mixture(x): return sum(
                 [circadian_hist[i] * partial(vm_density, mu=mu)(x) for i, mu in enumerate(mus)])
 
-            return vm_mixture(t)
+            return vm_mixture(t) / np.trapz(vm_mixture(mus))
 
         return vm_prior
 
@@ -146,6 +148,14 @@ class BSLE(BaseEstimator):
         percentiles = np.array([percentileofscore(log_likelihoods_training, i) for i in log_likelihoods])
         p_values = percentiles / 100
         novelties = p_values
+        
+        # repeat for normalities
+        log_likelihoods = self.inlier_de_.score_samples(X)
+        log_likelihoods_training = self.inlier_de_.score_samples(self.X_)
+        # compute p-values
+        percentiles = np.array([percentileofscore(log_likelihoods_training, i) for i in log_likelihoods])
+        p_values = percentiles / 100
+        normalities = p_values
 
         if samples_times is None:
             return novelties
@@ -155,7 +165,7 @@ class BSLE(BaseEstimator):
                 return novelties
             else:
                 priors = np.array([self.prior_(t) for t in samples_times])
-                evidence = self.outlier_de_.score_samples(X) * priors + self.inlier_de_.score_samples(X) * (1 - priors)
+                evidence = novelties * priors + normalities * (1 - priors)
                 return priors * novelties / evidence
 
     def predict(self, X):

@@ -59,3 +59,6 @@ def get_event_sample_times(ds, augment=False) -> np.ndarray:
     if augment:
         times = np.concatenate([times, times-5, times-10, times-15, times-20, times-25, times-30])
     return times.astype(int)
+
+def get_event_times(dataset_id):
+    pass

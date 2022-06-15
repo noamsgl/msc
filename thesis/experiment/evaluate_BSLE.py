@@ -8,14 +8,25 @@ from msc.cache_handler import get_samples_df
 from msc.estimators import BSLE
 
 
+def eval_unsupervised_bsle(train_X, test_X, test_y):
+    bsle = BSLE(thresh=0.05)
+
+    bsle.fit(train_X)
+    prob_pred = bsle.predict_proba(test_X)
+    print("eval_unsupervised_bsle")
+    print(brier_score_loss(test_y, prob_pred))
+
+def eval_weakly_supervised_bsle(train_X, train_events, test_X, test_times, test_y):
+    bsle = BSLE(thresh=0.05)
+
+    bsle.fit(train_X, y=None, prior_events=train_events)
+    prob_pred = bsle.predict_proba(test_X, samples_times=test_times)
+    print("eval_weakly_supervised_bsle")
+    print(brier_score_loss(test_y, prob_pred))
 
 if __name__ == "__main__":
         
     # bsle = BSLE(thresh=0.4)
-    # for estimator, check in check_estimator(bsle, generate_only=True):
-    #     check(estimator)
-        
-    bsle = BSLE(thresh=0.05)
     # for estimator, check in check_estimator(bsle, generate_only=True):
     #     check(estimator)
 
@@ -25,24 +36,23 @@ if __name__ == "__main__":
     # load samples_df
     samples_df = get_samples_df(dataset_id, with_events=True, with_time_to_event=True)
     samples_df['class'] = samples_df['time_to_event'].apply(lambda x: 1 if x < 5 else 0)
+    samples_df['is_event'] = samples_df['time_to_event'].apply(lambda x: True if x==0 else False)
 
     # split train/test
     samples_df['set'] = samples_df['time'].apply(lambda t: 'train' if t < t_max else 'test')
 
-    times = samples_df['time'].to_numpy()
+    # get train_times
+    # train_events = samples_df.loc[(samples_df['is_event']) & (samples_df['set'] == 'train'), 'time']
+    train_events = samples_df.loc[(samples_df['is_event']), 'time']
 
-    data = np.stack(samples_df['embedding'])  # type: ignore
-    rng = np.random.default_rng(seed=42)
-    
+    # get embeddings
     train_X = np.stack(samples_df.loc[samples_df['set'] == 'train', "embedding"])  # type: ignore
     test_X = np.stack(samples_df.loc[samples_df['set'] == 'test', "embedding"])  # type: ignore
     test_y = samples_df.loc[samples_df['set'] == 'test', "class"].to_numpy()
+    test_times = samples_df.loc[samples_df['set'] == 'test', "time"].to_numpy()
 
-    bsle.fit(train_X)
-    prob_pred = bsle.predict_proba(test_X)
-
-    x = 5
-    print(brier_score_loss(test_y, prob_pred))
+    eval_unsupervised_bsle(train_X, test_X, test_y)
+    eval_weakly_supervised_bsle(train_X, train_events, test_X, test_times, test_y)
 
 
 
