@@ -3,14 +3,13 @@ import numpy as np
 from scipy.special import i0
 from scipy.stats import percentileofscore
 from sklearn import mixture
-from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
+from sklearn.base import BaseEstimator
+from sklearn.linear_model import LogisticRegression
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-from sklearn.utils.multiclass import unique_labels
-from sklearn.metrics import euclidean_distances
 
 from .prior_utils import vm_density, event_times_to_circadian_hist
 
-SEC = 1e6
+SEC = 1
 MIN = 60 * SEC
 HOUR = 60 * MIN
 
@@ -92,40 +91,6 @@ class BSLE(BaseEstimator):
         # Return the classifier
         return self
 
-    @staticmethod
-    def _get_vm_prior(prior_events: np.ndarray):
-        """
-        return a prior over seizure occurrence as a function of time t
-        Parameters
-        ----------
-        prior_events : array-like of shape (n_samples,)
-            Array of times that are known to have had seizures.
-        Returns
-        -------
-
-        """
-        circadian_hist = event_times_to_circadian_hist(prior_events)  # ensure only past events affect current prior
-        def vm_prior(t: float):
-            """
-            the von Mises mixture model prior over the 24 hour cycle
-            Parameters
-            ----------
-            t       time
-
-            Returns
-            -------
-
-            """
-            N = 24  # hours
-            mus = np.arange(N) + 0.5
-
-            def vm_mixture(x): return sum(
-                [circadian_hist[i] * partial(vm_density, mu=mu)(x) for i, mu in enumerate(mus)])
-
-            return vm_mixture(t) / np.trapz(vm_mixture(mus))
-
-        return vm_prior
-
     def predict_proba(self, X, samples_times=None):
         """ calculate seizure likelihood for each sample
         Parameters
@@ -187,3 +152,37 @@ class BSLE(BaseEstimator):
         # return most likely class
         closest = (proba > 0.5).astype(int)
         return closest
+
+    @staticmethod
+    def _get_vm_prior(prior_events: np.ndarray):
+        """
+        return a prior over seizure occurrence as a function of time t
+        Parameters
+        ----------
+        prior_events : array-like of shape (n_samples,)
+            Array of times that are known to have had seizures.
+        Returns
+        -------
+
+        """
+        circadian_hist = event_times_to_circadian_hist(prior_events)  # ensure only past events affect current prior
+        def vm_prior(t: float):
+            """
+            the von Mises mixture model prior over the 24 hour cycle
+            Parameters
+            ----------
+            t       time
+
+            Returns
+            -------
+
+            """
+            N = 24  # hours
+            mus = np.arange(N) + 0.5
+
+            def vm_mixture(x): return sum(
+                [circadian_hist[i] * partial(vm_density, mu=mu)(x) for i, mu in enumerate(mus)])
+
+            return vm_mixture(t) / np.trapz(vm_mixture(mus))
+
+        return vm_prior
