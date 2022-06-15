@@ -2,7 +2,7 @@ from scipy.special import i0
 import numpy as np
 import pandas as pd
 
-SEC = 1e6
+SEC = 1
 MIN = 60 * SEC
 HOUR = 60 * MIN
 
@@ -39,7 +39,7 @@ def event_times_to_circadian_hist(event_times: np.ndarray, N=24):
     event_walltime_hour = np.mod(event_hours, 24)
 
     # compute events circadian histogram
-    circadian_hist = np.histogram(event_walltime_hour, np.arange(25))
+    circadian_hist = np.histogram(event_walltime_hour, np.arange(25))[0]
     return circadian_hist
 
 

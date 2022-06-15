@@ -86,6 +86,7 @@ class BSLE(BaseEstimator):
         if prior_events is None:
             self.prior_ = None
         else:
+            prior_events = prior_events.to_numpy()
             self.prior_ = self._get_vm_prior(prior_events)
 
         # Return the classifier
@@ -103,8 +104,8 @@ class BSLE(BaseEstimator):
         -------
 
         """
-        circadian_hist = event_times_to_circadian_hist(prior_events)[0]  # ensure only past events affect current prior
-
+        circadian_hist = event_times_to_circadian_hist(prior_events)  # ensure only past events affect current prior
+        print(f"{circadian_hist=}")
         def vm_prior(t: float):
             """
             the von Mises mixture model prior over the 24 hour cycle
