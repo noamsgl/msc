@@ -105,7 +105,6 @@ class BSLE(BaseEstimator):
 
         """
         circadian_hist = event_times_to_circadian_hist(prior_events)  # ensure only past events affect current prior
-        print(f"{circadian_hist=}")
         def vm_prior(t: float):
             """
             the von Mises mixture model prior over the 24 hour cycle
@@ -145,29 +144,25 @@ class BSLE(BaseEstimator):
 
         log_likelihoods = self.outlier_de_.score_samples(X)
         log_likelihoods_training = self.outlier_de_.score_samples(self.X_)
-        # compute p-values
-        percentiles = np.array([percentileofscore(log_likelihoods_training, i) for i in log_likelihoods])
-        p_values = percentiles / 100
-        novelties = p_values
-        
-        # repeat for normalities
-        log_likelihoods = self.inlier_de_.score_samples(X)
-        log_likelihoods_training = self.inlier_de_.score_samples(self.X_)
-        # compute p-values
-        percentiles = np.array([percentileofscore(log_likelihoods_training, i) for i in log_likelihoods])
-        p_values = percentiles / 100
-        normalities = p_values
 
+        
         if samples_times is None:
+            # compute p-values
+            percentiles = np.array([percentileofscore(log_likelihoods_training, i) for i in log_likelihoods])
+            p_values = percentiles / 100
+            novelties = p_values
             return novelties
         else:
             if self.prior_ is None:
-                print("no prior function found. returning likelihoods")
-                return novelties
+                raise AttributeError("self.prior_ is None. you should fit the estimator with prior events.")
             else:
                 priors = np.array([self.prior_(t) for t in samples_times])
-                evidence = novelties * priors + normalities * (1 - priors)
-                return priors * novelties / evidence
+                evidence = np.exp(self.outlier_de_.score_samples(X)) * priors + np.exp(self.outlier_de_.score_samples(X)) * (1 - priors)
+                posteriors = priors * np.exp(self.outlier_de_.score_samples(X)) / evidence
+                percentiles = np.array([percentileofscore(posteriors, i) for i in posteriors])
+                p_values = percentiles / 100
+                novelties = p_values
+                return novelties
 
     def predict(self, X):
         """ prediction for a classifier.

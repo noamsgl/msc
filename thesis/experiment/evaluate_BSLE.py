@@ -42,8 +42,8 @@ if __name__ == "__main__":
     samples_df['set'] = samples_df['time'].apply(lambda t: 'train' if t < t_max else 'test')
 
     # get train_times
-    # train_events = samples_df.loc[(samples_df['is_event']) & (samples_df['set'] == 'train'), 'time']
-    train_events = samples_df.loc[(samples_df['is_event']), 'time']
+    train_events = samples_df.loc[(samples_df['is_event']) & (samples_df['set'] == 'train'), 'time']
+    # train_events = samples_df.loc[(samples_df['is_event']), 'time']
 
     # get embeddings
     train_X = np.stack(samples_df.loc[samples_df['set'] == 'train', "embedding"])  # type: ignore
