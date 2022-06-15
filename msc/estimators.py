@@ -111,23 +111,22 @@ class BSLE(BaseEstimator):
         log_likelihoods_training = self.outlier_de_.score_samples(self.X_)
 
         
-        if samples_times is None:
-            # compute p-values
+        if samples_times is None:  # unsupervised
+            # compute p-values from observed log-likelihoods based on training samples
             percentiles = np.array([percentileofscore(log_likelihoods_training, i) for i in log_likelihoods])
             p_values = percentiles / 100
-            novelties = p_values
-            return novelties
-        else:
+            return p_values
+        else:   # weakly supervised
             if self.prior_ is None:
                 raise AttributeError("self.prior_ is None. you should fit the estimator with prior events.")
             else:
+                # compute p_values 
                 priors = np.array([self.prior_(t) for t in samples_times])
                 evidence = np.exp(self.outlier_de_.score_samples(X)) * priors + np.exp(self.outlier_de_.score_samples(X)) * (1 - priors)
                 posteriors = priors * np.exp(self.outlier_de_.score_samples(X)) / evidence
                 percentiles = np.array([percentileofscore(posteriors, i) for i in posteriors])
                 p_values = percentiles / 100
-                novelties = p_values
-                return novelties
+                return p_values
 
     def predict(self, X):
         """ prediction for a classifier.

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pymsc',
-    version='0.2.0',
+    version='0.3.0',
     url='https://github.com/noamsgl/msc',
     author='Noam Siegel',
     author_email='noamsi@post.bgu.ac.il',

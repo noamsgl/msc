@@ -1,5 +1,9 @@
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 import numpy as np
 import pandas as pd
+
+from sklearn.calibration import CalibratedClassifierCV, CalibrationDisplay
 from sklearn.metrics import brier_score_loss
 from sklearn.utils.estimator_checks import check_estimator
 
@@ -7,6 +11,11 @@ from msc import config
 from msc.cache_handler import get_samples_df
 from msc.estimators import BSLE
 
+# plt.style.use(['science', 'no-latex'])
+
+SEC = 1
+MIN = 60 * SEC
+HOUR = 60 * MIN
 
 def eval_unsupervised_bsle(train_X, test_X, test_y):
     bsle = BSLE(thresh=0.05)
@@ -24,9 +33,9 @@ def eval_weakly_supervised_bsle(train_X, train_events, test_X, test_times, test_
     print("eval_weakly_supervised_bsle")
     print(brier_score_loss(test_y, prob_pred))
 
+
 if __name__ == "__main__":
-        
-    # bsle = BSLE(thresh=0.4)
+    # bsle = BSLE()
     # for estimator, check in check_estimator(bsle, generate_only=True):
     #     check(estimator)
 
@@ -35,9 +44,9 @@ if __name__ == "__main__":
 
     # load samples_df
     samples_df = get_samples_df(dataset_id, with_events=True, with_time_to_event=True)
-    samples_df['class'] = samples_df['time_to_event'].apply(lambda x: 1 if x < 5 else 0)
+    samples_df['class'] = samples_df['time_to_event'].apply(lambda x: 1 if x <= 30 * MIN else 0)
     samples_df['is_event'] = samples_df['time_to_event'].apply(lambda x: True if x==0 else False)
-
+    print(f"class counts is {samples_df['class'].value_counts().to_numpy()}")
     # split train/test
     samples_df['set'] = samples_df['time'].apply(lambda t: 'train' if t < t_max else 'test')
 
@@ -51,8 +60,6 @@ if __name__ == "__main__":
     test_y = samples_df.loc[samples_df['set'] == 'test', "class"].to_numpy()
     test_times = samples_df.loc[samples_df['set'] == 'test', "time"].to_numpy()
 
+
     eval_unsupervised_bsle(train_X, test_X, test_y)
     eval_weakly_supervised_bsle(train_X, train_events, test_X, test_times, test_y)
-
-
-
