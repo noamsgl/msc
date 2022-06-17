@@ -3,8 +3,9 @@ from numpy.random import default_rng
 
 from ieegpy.ieeg.auth import Session
 from ieegpy.ieeg.dataset import Dataset
-from msc.config import get_authentication
-from msc import config
+
+from .config_utils import get_authentication, config
+
 
 def count_nans(data):
     """return count of nan entries"""

@@ -5,7 +5,7 @@ import numpy as np
 import zarr
 
 from msc import get_logger
-from msc.data_utils import count_nans, get_config_dataset, get_event_sample_times, get_sample_times
+from msc.data_utils import count_nans, get_dataset, get_event_sample_times, get_sample_times
 from msc.logs import nan_report
 from msc.slurm_handler import SlurmHandler
 
@@ -133,10 +133,10 @@ if __name__ == "__main__":
     print("Beginning embedding")
     config_fpath = sys.argv[1]
     config = yaml.safe_load(open(f'{config_fpath}', 'r'))
-    ds = get_config_dataset()
+    ds = get_dataset(config['dataset_id'])
     # mode = 'offline'
     mode = 'online'
-    embeddor = parallel_embeddor(config, ds, mode='online')
+    embeddor = parallel_embeddor(config, ds, mode='offline')
 
     embeddor.run()
     print(f"finished gracefully")

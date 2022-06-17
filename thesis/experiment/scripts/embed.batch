@@ -26,4 +26,4 @@ echo -e "SLURM_JOB_NODELIST:\t" $SLURM_JOB_NODELIST "\n\n"
 ### Start your code below ####
 module load anaconda                            ### load anaconda module (must be present when working with conda environments)
 source activate msc                          ### activate a conda environment
-python ~/msc/thesis/experiment/main.py $1                         ### execute python script
+python ~/msc/thesis/experiment/embeddor_main.py $1                         ### execute python script

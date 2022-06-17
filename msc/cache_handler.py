@@ -22,7 +22,8 @@ def get_samples_df(dataset_id:str, with_events=False, with_time_to_event=True) -
             embedding = time_zarr['embedding'][1:9]
             embeddings.append(embedding)
             data = {"time": key,
-                    "embedding": embedding}
+                    "embedding": embedding
+                    }
             samples_df.append(data)
 
     if with_events:
@@ -34,7 +35,8 @@ def get_samples_df(dataset_id:str, with_events=False, with_time_to_event=True) -
                 embedding = time_zarr['embedding'][1:9]
                 embeddings.append(embedding)
                 data = {"time": key,
-                        "embedding": embedding}
+                        "embedding": embedding
+                        }
                 samples_df.append(data)
     
     if with_time_to_event:
@@ -53,6 +55,8 @@ def get_samples_df(dataset_id:str, with_events=False, with_time_to_event=True) -
         samples_df = samples_df.sort_values(by='time', ignore_index=True)
         samples_df = pd.merge_asof(samples_df, events_df, left_on='time', right_on='onset', direction='forward')
         samples_df['time_to_event'] = samples_df['onset'] - samples_df['time']
+        samples_df['is_event'] = samples_df['time_to_event'].apply(lambda x: True if x==0 else False)
+
 
     # create samples_df DataFrame
     samples_df = pd.DataFrame(samples_df)
