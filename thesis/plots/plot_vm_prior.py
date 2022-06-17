@@ -7,24 +7,15 @@ import pandas as pd
 from scipy.special import i0
 
 from msc import config
-from msc.datamodules.data_utils import IEEGDataFactory
+from msc.data_utils import get_dataset
 from msc.plot_utils import set_size
-from msc.prior_utils import get_events_df
+from msc.prior_utils import get_events_df, vm_density, vm_mixture
 
 plt.style.use(['science', 'no-latex'])
 
 SEC = 1e6
 MIN = 60 * SEC
 HOUR = 60 * MIN
-
-def get_dataset(dataset_id):
-    # get dataset from iEEG.org
-    ds = IEEGDataFactory.get_dataset(dataset_id)
-    return ds
-    
-def karoly_prior(t):
-    ds = get_dataset(config['dataset_id'])
-
 
 
 def plot_bar_histogram(width):
@@ -79,14 +70,9 @@ def plot_polar_histogram(fig_width):
     plt.savefig(f"{config['path']['figures']}/prior/polar_hist.pdf", bbox_inches='tight')
 
 
-def vmdensity(x, mu, k=1/0.6):
-    """von mises density function"""
-    omega = 2 * np.pi/N
-    return np.exp(k * np.cos(omega * (x - mu)))/(2 * np.pi * i0(k))
-
 def plot_vmdensity(width, mu=8, k=1/0.6):
     X = np.linspace(0, N, 100)
-    y = vmdensity(X, mu=mu, k=k)
+    y = vm_density(X, mu=mu, k=k)
 
     # prepare figure
     fig = plt.figure(figsize=set_size(width))
@@ -108,12 +94,10 @@ def plot_von_mises_prior(width, fig=None):
         fig = plt.figure(figsize=set_size(width))
     else:
         plt.figure(fig)
-    mus = np.arange(N) + 0.5
-    vm_mixture = lambda x: sum([circadian_hist[i] * partial(vmdensity, mu=mu)(x) for i, mu in enumerate(mus)])
     X = np.linspace(0, 24, 100)
-    y = vm_mixture(X)
-
-    plt.plot(X, y, label='v.M. prior')
+    y = vm_mixture(X, circadian_hist)
+    y = 5 * y / max(y)  #TODO: make this same height as bar chart
+    plt.plot(X, y, label='v.M. prior (not at scale)')
     # plt.plot(y)
     # ax.set_xlabel('walltime')
     legend = plt.legend(loc='upper right', framealpha=1)
@@ -144,6 +128,6 @@ if __name__ == "__main__":
     
     width = 478  #pt
     fig = plot_bar_histogram(width)
-    plot_polar_histogram(width)
+    # plot_polar_histogram(width)
     plot_vmdensity(width)
     plot_von_mises_prior(width, fig)

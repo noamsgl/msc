@@ -1,3 +1,4 @@
+from functools import partial
 from scipy.special import i0
 import numpy as np
 import pandas as pd
@@ -9,7 +10,16 @@ HOUR = 60 * MIN
 def vm_density(x, mu, k=1 / 0.6):
     """von mises density function over 24 hours"""
     omega = 2 * np.pi / 24
-    return np.exp(k * np.cos(omega * (x - mu))) / (2 * np.pi * i0(k))
+    density_func = lambda x: np.exp(k * np.cos(omega * (x - mu))) / (2 * np.pi * i0(k))  # not normalized
+    normalizing_constant = np.trapz(density_func(np.linspace(0,24,100)))
+    return density_func(x) / normalizing_constant
+
+
+def vm_mixture(x, circadian_hist): 
+    mus = np.arange(24) + 0.5
+    density_func = lambda x: sum([circadian_hist[i] * partial(vm_density, mu=mu)(x) for i, mu in enumerate(mus)])  # not normalized
+    normalizing_constant = np.trapz(density_func(np.linspace(0, 24, 100)))
+    return density_func(x) / normalizing_constant
 
 
 def get_events_df(events) -> pd.DataFrame:
