@@ -134,9 +134,9 @@ if __name__ == "__main__":
     config_fpath = sys.argv[1]
     config = yaml.safe_load(open(f'{config_fpath}', 'r'))
     ds = get_dataset(config['dataset_id'])
+    mode = 'offline'
     # mode = 'offline'
-    mode = 'online'
-    embeddor = parallel_embeddor(config, ds, mode='offline')
+    embeddor = parallel_embeddor(config, ds, mode=mode)
 
     embeddor.run()
     print(f"finished gracefully")

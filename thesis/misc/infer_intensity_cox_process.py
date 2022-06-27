@@ -3,6 +3,7 @@ import gpytorch
 
 import math
 import torch
+from torch.utils.tensorboard import SummaryWriter
 import gpytorch
 import pyro
 import tqdm
@@ -10,6 +11,8 @@ import matplotlib.pyplot as plt
 
 from msc import config
 from msc.models.annotations import COXModel
+
+pyro.set_rng_seed(config['random_seed'])
 
 SEC = 1
 MIN = 60 * SEC
@@ -36,12 +39,18 @@ quadrature_times = torch.linspace(0, max_time, 1024).double()
 torch.set_default_dtype(torch.float64)
 model = COXModel(event_times.numel(), max_time)
 
-
 # initialize training
 num_iter = 1024
 num_particles = 32
 
-def train(lr=0.01):
+def train(lr=0.01):Show data download links
+Ignore outliers in chart scaling
+Tooltip sorting method:
+default
+Smoothing
+0.6
+Horizontal Axis
+
     optimizer = pyro.optim.Adam({"lr": lr})
     loss = pyro.infer.Trace_ELBO(num_particles=num_particles, vectorize_particles=True, retain_graph=True)
     infer = pyro.infer.SVI(model.model, model.guide, optimizer, loss=loss)
@@ -50,11 +59,12 @@ def train(lr=0.01):
     loader = tqdm.tqdm(range(num_iter))
     for i in loader:
         loss = infer.step(event_times, quadrature_times)
+        writer.add_scalar("Loss/train", loss, i)
         loader.set_postfix(loss=loss)
 
+writer = SummaryWriter()
 train()
-
-wait = True
+writer.flush()
 
 # Here's a quick helper function for getting smoothed percentile values from samples
 def percentiles_from_samples(samples, percentiles=[0.05, 0.5, 0.95]):

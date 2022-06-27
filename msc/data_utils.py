@@ -45,6 +45,7 @@ def get_sample_times(N, mode, t_end=None) -> np.ndarray:
         times = np.array(rng.integers(0, config['t_max'], size=N))  # type: ignore
     elif mode == "online":
         assert t_end is not None
+        assert config['t_max'] <= t_end, f"error: {config['t_max']=} is not <= than {t_end=}"
         times = np.array(rng.integers(config['t_max'], t_end, size=N))  # type: ignore
     else:
         raise ValueError(f"{mode=} is unsupported")

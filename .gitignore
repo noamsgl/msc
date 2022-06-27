@@ -232,3 +232,4 @@ config/authentication.yaml
 .vscode/*
 msc_data/*
 msc_data.zip
+runs/
