@@ -2,8 +2,8 @@ embeddor:
   _target_: msc.models.embedding.GPEmbeddor
   random_seed: 42
   num_channels: 2
-  learning_rate: 0.01
-  n_epochs: 1000
+  learning_rate: 0.1
+  n_epochs: 2000
   log_every_n_steps: 50
   fast_dev_run: false
   resume_from_checkpoint: false

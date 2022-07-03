@@ -2,16 +2,18 @@
 FAST_DEV: false
 FAST_DEV_K: 3
 
-# dataset_id: I004_A0001_D001
 # dataset_id: I004_A0002_D001
 dataset_id: I004_A0003_D001
+# dataset_id: I004_A0004_D001
 duration: 10
-num_channels: 2
+num_channels: 16
 random_seed: 42
 t_max: 17280000  # 200 days in seconds
-n_jobs: 100
-n_embeddings: 3000
+n_jobs: 200
+n_embeddings: 4000
 n_ds_stats: 1000
+# prior params
+n_vm_kernels: 24
 INDEX_MACHINE: BGUCLUSTER
 RAW_MACHINE: BGUCLUSTER
 RESULTS_MACHINE: BGUCLUSTER
@@ -29,8 +31,10 @@ path:
   #   ROOT: C:\Users\noam\Repositories\noamsgl\msc\
   #   RESULTS: C:\Users\noam\Repositories\noamsgl\msc\results
   #   IEEG_DATASET: C:\Users\noam\Repositories\noamsgl\msc\results\ieeg
-  #   LIGHTNING_LOGS: C:\Users\noam\Repositories\noamsgl\msc\results\lightning_logs
+  #   LIGHTNING_LOGS: C:\Users\noam\Repositories\noamsgl\msc\results\lightning_logs  
+  config: /cs_storage/noamsi/msc/config
   data: /cs_storage/noamsi/msc/data
+  data_v1: /cs_storage/noamsi/msc/data_v1
   root: /cs_storage/noamsi/msc
   results: /cs_storage/noamsi/results
   lightning_logs: /cs_storage/noamsi/msc/output/lightning_logs

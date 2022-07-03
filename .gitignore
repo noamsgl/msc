@@ -225,6 +225,7 @@ cython_debug/
 
 ##### MSC GITIGNORE #####
 data/*
+data_v*
 output/*
 results/*
 scratch/*

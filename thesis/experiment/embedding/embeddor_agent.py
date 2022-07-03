@@ -73,7 +73,7 @@ def embed(job_code, dataset_id, duration, num_channels, into_events) -> None:
             continue
 
         # initialize gp
-        with initialize(config_path="../../config/embeddor/"):
+        with initialize(config_path="../../../config/embeddor/"):
             cfg = compose(config_name="gp", overrides=[])
             gp : GPEmbeddor = hydra.utils.instantiate(cfg.embeddor)
             # initialize pytorch-lightning logging directory
