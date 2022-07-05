@@ -10,7 +10,7 @@ num_channels: 16
 random_seed: 42
 t_max: 17280000  # 200 days in seconds
 n_jobs: 200
-n_embeddings: 4000
+n_embeddings: 8000
 n_ds_stats: 1000
 # prior params
 n_vm_kernels: 24

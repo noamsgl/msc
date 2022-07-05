@@ -1,4 +1,11 @@
 
+def square_size(length):
+        """set figure dimensions to square"""
+        inches_per_pt = 1 / 72.27
+        fig_width_in = length * inches_per_pt
+        fig_dim = (fig_width_in, fig_width_in)
+        return fig_dim
+
 def set_size(width, fraction=1., height_scale=1.):
     """Set figure dimensions to avoid scaling in LaTeX.
 
