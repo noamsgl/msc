@@ -23,12 +23,12 @@ def plot(width):
     samples_df[['pca-2d-one', 'pca-2d-two']] = components
 
     # fit a Gaussian Mixture Model with two components
-    clf = mixture.GaussianMixture(n_components=4, covariance_type="full")
+    clf = mixture.GaussianMixture(n_components=4, covariance_type="full", random_state=42)
     clf.fit(components)
 
     # display predicted scores by the model as a contour plot
-    x = np.linspace(-10.0, 15.0, 200)
-    y = np.linspace(-10.0, 15.0, 200)
+    x = np.linspace(-10.0, 10.0, 200)
+    y = np.linspace(-10.0, 10.0, 200)
 
     X, Y = np.meshgrid(x, y)
     XX = np.array([X.ravel(), Y.ravel()]).T
@@ -39,8 +39,8 @@ def plot(width):
     fig = plt.figure(figsize=set_size(width, height_scale=1.4))
 
     # set drawing limits
-    plt.xlim(-7.26, 12.468)
-    plt.ylim(-2.942, 11.104)
+    # plt.xlim(-7.26, 12.468)
+    # plt.ylim(-2.942, 11.104)
 
     norm = SymLogNorm(vmin=np.min(Z), vmax=np.log10(0.5), linthresh=0.03)
     levels = -np.flip(np.logspace(0, np.log10(-np.min(Z)), 20))
@@ -63,7 +63,7 @@ def plot(width):
 
     # save fig
     # plt.show()
-    plt.savefig(f"{config['path']['figures']}/density_estimation/density_estimation.pdf", bbox_inches='tight')
+    plt.savefig(f"{config['path']['figures']}/density_estimation/density_estimation2.pdf", bbox_inches='tight')
     plt.clf()
 
 

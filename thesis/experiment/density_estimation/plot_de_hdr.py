@@ -54,7 +54,7 @@ def plot_de_hdr(de, thresh, ax=None):
     plt.savefig(
         f"{config['path']['figures']}/density_estimation/hdr.pdf", bbox_inches="tight"
     )
-
+    return ax
 
 if __name__ == "__main__":
     # TODO: pickup here
