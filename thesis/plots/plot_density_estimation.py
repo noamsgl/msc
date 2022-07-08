@@ -125,18 +125,18 @@ def plot_pc_pair_plot(width, n_dim=5):
 
     # create fig and axes
     fig, axes = plt.subplots(
-        n_dim,
-        n_dim,
+        n_dim - 1,
+        n_dim - 1,
         sharex=False,
         sharey=False,
         figsize=set_size(width, transposed=False),
         # figsize=square_size(width)
     )
 
-    for i in tqdm(range(n_dim)):  # component 1
-        for j in range(n_dim):  # component 2
-            if i > j:             
-                integrate_over_dims = tuple([d for d in range(n_dim) if d != i and d != j])
+    for i in tqdm(range(n_dim - 1)):  # rows
+        for j in range(n_dim - 1):  # columns
+            if i >= j:             
+                integrate_over_dims = tuple([d for d in range(n_dim) if d != (i+1) and d != j])
                 integrated_Z = scipy.special.logsumexp(Z, axis=integrate_over_dims)
 
                 norm = SymLogNorm(vmin=np.min(integrated_Z), vmax=np.log10(0.5), linthresh=0.03)
@@ -152,29 +152,23 @@ def plot_pc_pair_plot(width, n_dim=5):
                     cmap="viridis_r",
                     levels=levels,
                 )
-
-                axes[i, j].set_xticks(x)
-                axes[i, j].set_yticks(x)
+                axes[i, j].tick_params(axis='both', which='major', labelsize=8)
+                axes[i, j].tick_params(axis='both', which='minor', labelsize=6)
+                # axes[i, j].set_xticks(x)
+                # axes[i, j].set_yticks(x)
                 # # https://matplotlib.org/stable/api/ticker_api.html#matplotlib.ticker.SymmetricalLogLocator
-                # CB = plt.colorbar(
-                #     CS,
-                #     location="bottom",
-                #     ticks=SymmetricalLogLocator(linthresh=0.03, base=10, subs=range(10)),
-                # )
-                # # CB.ax.minorticks_off()
 
-                # CB.set_label("marginal log-likelihood")
 
                 # add axes annotations
 
                     
                 # axes[i, j].set_xlabel("PC1")
                 # axes[i, j].set_ylabel("PC2")
-            if i == j:
-                axes[i, j].text(0.5, 0.5, f"PC{i+1}", ha="center", va="center")
-                axes[i, j].set_frame_on(False)
-                axes[i, j].set_xticks([])
-                axes[i, j].set_yticks([])
+            # if i == j:
+            #     axes[i, j].text(0.5, 0.5, f"PC{i+1}", ha="center", va="center")
+            #     axes[i, j].set_frame_on(False)
+            #     axes[i, j].set_xticks([])
+            #     axes[i, j].set_yticks([])
             else:
                 axes[i, j].set_frame_on(False)
                 axes[i, j].set_xticks([])
@@ -182,16 +176,23 @@ def plot_pc_pair_plot(width, n_dim=5):
                 # axes[i, j].axis("off")
                 pass
 
-    for i in tqdm(range(n_dim)):  # component 1
-        for j in range(n_dim):  # component 2
-            if i == n_dim-1 and j != n_dim-1:
+    for i in tqdm(range(n_dim - 1)):  # component 1
+        for j in range(n_dim - 1):  # component 2
+            if i == n_dim-2:
                 axes[i, j].set_xlabel(f"PC{j + 1}")
 
-            if j == 0 and i != 0:
-                axes[i, j].set_ylabel(f"PC{i + 1}")
+            if j == 0:
+                axes[i, j].set_ylabel(f"PC{i + 2}")
             # We change the fontsize of ticks label
-            # axes[i, j].tick_params(axis='both', which='major', labelsize=8)
-            # axes[i, j].tick_params(axis='both', which='minor', labelsize=6)
+
+    # CB = plt.colorbar(
+    #     CS,
+    #     location="bottom",
+    #     ticks=SymmetricalLogLocator(linthresh=0.03, base=10, subs=range(10)),
+    # )
+    # CB.ax.minorticks_off()
+
+    # CB.set_label("marginal log-likelihood")
 
     plt.tight_layout()
     plt.savefig(
