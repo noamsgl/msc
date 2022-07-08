@@ -6,7 +6,7 @@ def square_size(length):
         fig_dim = (fig_width_in, fig_width_in)
         return fig_dim
 
-def set_size(width, fraction=1., height_scale=1.):
+def set_size(width, fraction=1., height_scale=1., transposed=False):
     """Set figure dimensions to avoid scaling in LaTeX.
 
     Parameters
@@ -40,5 +40,8 @@ def set_size(width, fraction=1., height_scale=1.):
 
     fig_dim = (fig_width_in, fig_height_in)
 
+    if transposed:
+        fig_dim = fig_dim[::-1]
+        
     return fig_dim
     

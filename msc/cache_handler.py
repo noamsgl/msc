@@ -9,7 +9,7 @@ from .time_utils import uSEC
 
 
 def get_samples_df(
-    dataset_id: str, with_events=False, with_time_to_event=True
+    dataset_id: str, with_wall_time=True, with_events=False, with_time_to_event=False
 ) -> pd.DataFrame:
     cache_path = f"{config['path']['data_v1']}/cache.zarr"
     cache_zarr = zarr.open(cache_path, "r")
@@ -21,12 +21,14 @@ def get_samples_df(
     exclude_groups = ["std", "mu", "events"]
     samples_df = []
 
-    # get dataset
-    ds = get_dataset(config["dataset_id"])
-    # get dataset's start time
-    start_time = datetime.datetime.fromtimestamp(
-        ds.start_time * uSEC, datetime.timezone.utc
-    )
+    if with_wall_time:
+        # get dataset's start time
+        ds = get_dataset(dataset_id)
+        start_time = datetime.datetime.fromtimestamp(
+            ds.start_time * uSEC, datetime.timezone.utc
+        )
+    else:
+        start_time = datetime.datetime(year=2000, month=1, day=1)
 
     for key in sorted([int(k) for k in ds_zarr.keys() if k not in exclude_groups]):
         time_zarr = ds_zarr[f"{key}"]
