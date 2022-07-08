@@ -11,7 +11,7 @@ from .time_utils import uSEC
 def get_samples_df(
     dataset_id: str, with_wall_time=True, with_events=False, with_time_to_event=False
 ) -> pd.DataFrame:
-    cache_path = f"{config['path']['data_v1']}/cache.zarr"
+    cache_path = f"{config['path']['data']}/cache.zarr"
     cache_zarr = zarr.open(cache_path, "r")
 
     ds_zarr = cache_zarr[f"{dataset_id}"]
@@ -33,7 +33,7 @@ def get_samples_df(
     for key in sorted([int(k) for k in ds_zarr.keys() if k not in exclude_groups]):
         time_zarr = ds_zarr[f"{key}"]
         if "embedding" in time_zarr:
-            embedding = time_zarr["embedding"][1:9]
+            embedding = time_zarr["embedding"][1:-2]
             embeddings.append(embedding)
 
             wall_time = start_time + datetime.timedelta(seconds=key)
