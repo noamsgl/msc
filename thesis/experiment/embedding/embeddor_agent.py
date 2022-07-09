@@ -40,7 +40,7 @@ def embed(job_code, dataset_id, duration, num_channels, into_events) -> None:
         logger.info(f"beginning embedding of time {t=}")
         # initialize t_zarr (a zarray for time t)
         if into_events:
-            events_zarr = ds_zarr["events"]
+            events_zarr = ds_zarr.require_group("events")
             t_zarr = events_zarr.require_group(f"{t}")
         else:
             t_zarr = ds_zarr.require_group(f"{t}")
