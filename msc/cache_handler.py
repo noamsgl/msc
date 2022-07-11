@@ -11,7 +11,7 @@ from .time_utils import uSEC
 def get_samples_df(
     dataset_id: str, with_wall_time=True, with_events=False, with_time_to_event=False
 ) -> pd.DataFrame:
-    cache_path = f"{config['path']['data']}/cache.zarr"
+    cache_path = f"{config['path']['data_v1']}/cache.zarr"
     cache_zarr = zarr.open(cache_path, "r")
 
     ds_zarr = cache_zarr[f"{dataset_id}"]
@@ -36,9 +36,10 @@ def get_samples_df(
             embedding = time_zarr["embedding"][1:-2]
             embeddings.append(embedding)
 
+            data = time_zarr["data"][:]
             wall_time = start_time + datetime.timedelta(seconds=key)
-            data = {"time": key, "wall_time": wall_time, "embedding": embedding}
-            samples_df.append(data)
+            row_dict = {"time": key, "wall_time": wall_time, "data": data, "embedding": embedding}
+            samples_df.append(row_dict)
 
     if with_events:
         # collect embeddings from events_zarr
@@ -50,8 +51,8 @@ def get_samples_df(
             if "embedding" in time_zarr:
                 embedding = time_zarr["embedding"][1:9]
                 embeddings.append(embedding)
-                data = {"time": key, "embedding": embedding}
-                samples_df.append(data)
+                row_dict = {"time": key, "embedding": embedding}
+                samples_df.append(row_dict)
 
     if with_time_to_event:
         # collect events from ieeg.org  #TODO: get from cache
