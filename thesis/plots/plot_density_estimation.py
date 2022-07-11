@@ -152,29 +152,15 @@ def plot_pc_pair_plot(width, n_dim=5):
                     cmap="viridis_r",
                     levels=levels,
                 )
+                # We change the fontsize of ticks label
                 axes[i, j].tick_params(axis='both', which='major', labelsize=8)
                 axes[i, j].tick_params(axis='both', which='minor', labelsize=6)
-                # axes[i, j].set_xticks(x)
-                # axes[i, j].set_yticks(x)
-                # # https://matplotlib.org/stable/api/ticker_api.html#matplotlib.ticker.SymmetricalLogLocator
 
-
-                # add axes annotations
-
-                    
-                # axes[i, j].set_xlabel("PC1")
-                # axes[i, j].set_ylabel("PC2")
-            # if i == j:
-            #     axes[i, j].text(0.5, 0.5, f"PC{i+1}", ha="center", va="center")
-            #     axes[i, j].set_frame_on(False)
-            #     axes[i, j].set_xticks([])
-            #     axes[i, j].set_yticks([])
             else:
                 axes[i, j].set_frame_on(False)
                 axes[i, j].set_xticks([])
                 axes[i, j].set_yticks([])
-                # axes[i, j].axis("off")
-                pass
+
 
     for i in tqdm(range(n_dim - 1)):  # component 1
         for j in range(n_dim - 1):  # component 2
@@ -183,8 +169,8 @@ def plot_pc_pair_plot(width, n_dim=5):
 
             if j == 0:
                 axes[i, j].set_ylabel(f"PC{i + 2}")
-            # We change the fontsize of ticks label
-
+    
+    # add colorbar
     # CB = plt.colorbar(
     #     CS,
     #     location="bottom",
