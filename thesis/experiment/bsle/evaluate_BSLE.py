@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import numpy as np
@@ -14,18 +13,11 @@ from msc.cache_handler import get_samples_df
 from msc.estimators import BSLE
 from msc.plot_utils import set_size
 from msc.time_utils import SEC, MIN, HOUR
+from msc.data_utils import EvalData
 
 plt.style.use(["science", "no-latex"])
 
 fig_width = 478  # pt
-
-@dataclass
-class EvalData:
-    train_X: np.ndarray
-    train_events: np.ndarray
-    test_X: np.ndarray
-    test_times: np.ndarray
-    test_y: np.ndarray
 
 def eval_unsupervised_bsle(eval_data):
     bsle = BSLE(thresh=0.05)

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import numpy as np
 from numpy.random import default_rng
 
@@ -64,3 +65,11 @@ def get_event_sample_times(ds, augment=False) -> np.ndarray:
 
 def get_event_times(dataset_id):
     pass
+
+@dataclass
+class EvalData:
+    train_X: np.ndarray
+    train_events: np.ndarray
+    test_X: np.ndarray
+    test_times: np.ndarray
+    test_y: np.ndarray
