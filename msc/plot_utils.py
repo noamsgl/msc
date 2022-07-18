@@ -1,3 +1,7 @@
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
+
 
 def square_size(length):
         """set figure dimensions to square"""
@@ -45,3 +49,20 @@ def set_size(width, fraction=1., height_scale=1., transposed=False):
         
     return fig_dim
     
+
+def plot_sample(times, sample, yfactor=10, ax=None) -> Figure:
+    # plot
+    sample = sample.T
+    if ax is None:
+        plt.clf()
+        fig = plt.gcf()
+        ax: Axes = fig.add_subplot()
+    ax.set_xlabel("time (sec)")
+    ax.set_ylabel("EEG")
+    ax.set_yticks([])
+    for i in range(len(sample)):
+        channel = sample[i]
+        channel += yfactor * i
+        ax.plot(times, channel)
+    # return
+    return plt.gcf()

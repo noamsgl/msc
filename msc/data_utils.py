@@ -73,3 +73,7 @@ class EvalData:
     test_X: np.ndarray
     test_times: np.ndarray
     test_y: np.ndarray
+
+
+def get_sample_rate_from_ds(ds):
+    return ds.get_time_series_details('LEFT_02').sample_rate
