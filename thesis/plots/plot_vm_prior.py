@@ -113,7 +113,7 @@ def plot_vmdensity(width, mu=8, k=1 / 0.6):
     plt.ylim(bottom=0)
     plt.legend()
     plt.savefig(
-        f"{config['path']['figures']}/prior/vm_density.pdf", bbox_inches="tight"
+        f"{config['path']['figures']}/bsle_intro/vm_density.pdf", bbox_inches="tight"
     )
 
 
