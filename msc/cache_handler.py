@@ -11,7 +11,7 @@ from .time_utils import uSEC
 def get_samples_df(
     dataset_id: str, with_wall_time=True, with_events=False, with_time_to_event=False
 ) -> pd.DataFrame:
-    cache_path = f"{config['path']['data_v1']}/cache.zarr"
+    cache_path = f"{config['path']['data']}/cache.zarr"
     cache_zarr = zarr.open(cache_path, "r")
 
     ds_zarr = cache_zarr[f"{dataset_id}"]
