@@ -11,7 +11,7 @@ from ieeg.dataset import Dataset
 import pickle
 from tqdm import tqdm
 
-from msc.config import get_authentication
+from msc.config_utils import get_authentication
 from msc import config
 
 def generate_data_intervals(ds: Dataset, duration=1e6, extension='npy', N=1000):

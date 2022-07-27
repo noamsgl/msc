@@ -7,11 +7,8 @@ from sklearn.base import BaseEstimator
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
-from .prior_utils import vm_density, event_times_to_circadian_hist
-
-SEC = 1
-MIN = 60 * SEC
-HOUR = 60 * MIN
+from .prior_utils import vm_density, event_times_to_circadian_hist, PercentileOfScore
+from .time_utils import SEC, MIN, HOUR, DAY
 
 
 class BSLE(BaseEstimator):
@@ -31,6 +28,10 @@ class BSLE(BaseEstimator):
             used to differentiate inliers from outliers for the likelihood function
         """
         self.thresh = thresh
+        self.hdpi_cutoff_value_ = None
+        self.de_ = None
+        self.p_E_ = None
+        self.prior_ = None
 
     def fit(self, X, y=None, prior_events=None):
         """learn the density of data samples.
@@ -49,44 +50,30 @@ class BSLE(BaseEstimator):
         self : object
             Returns self.
         """
-        # Check that X and y have correct shape
+        # Check that X has correct shape
         X = self._validate_data(X)
         # X, y = check_X_y(X, y)
         self.X_ = X
         self.is_fitted_ = True
 
         # initialize density estimator
-        de = mixture.GaussianMixture(n_components=4, covariance_type="full")
-        de.fit(X)
+        self.de_ = mixture.GaussianMixture(n_components=2, covariance_type="full")
+        self.de_.fit(X)
 
         # compute sample likelihoods
-        likelihoods = de.score_samples(X)
-
-        # compute p-values
-        percentiles = np.array([percentileofscore(likelihoods, i) for i in likelihoods])
-        p_values = percentiles / 100
-
-        cutoff = np.percentile(p_values, self.thresh * 100)
-
-        # divide into inliers and outliers
-        inliers = X[p_values <= cutoff]
-        outliers = X[p_values > cutoff]
-
-        assert len(inliers) > 1, f"error: {len(inliers)=} must be greater than 1. try changing thresh"
-        assert len(outliers) > 1, f"error: {len(outliers)=} must be greater than 1. try changing thresh"
-        
-        # compute density for each
-        self.inlier_de_ = mixture.GaussianMixture(n_components=4, covariance_type="full")
-        self.outlier_de_ = mixture.GaussianMixture(n_components=4, covariance_type="full")
-        self.inlier_de_.fit(inliers)
-        self.outlier_de_.fit(outliers)
+        # density estimation of training samples
+        self.p_E_ = self.de_.score_samples(X)
+        # compute cutoff_value
+        self.hdpi_cutoff_value_ = np.partition(self.p_E_, int(len(self.p_E_) * self.thresh))[int(len(self.p_E_) * self.thresh)]
 
         # initialize prior
-        if prior_events is None:
-            self.prior_ = None
-        else:
-            prior_events = prior_events.to_numpy()
+        if prior_events is not None:
+            assert isinstance(prior_events, np.ndarray), f"error: prior_events must be a numpy array"
             self.prior_ = self._get_vm_prior(prior_events)
+        else:
+            base_rate_per_day = 1/(10 * DAY)
+            sample_length = 10 * SEC / 24 * HOUR
+            self.prior_ = lambda t: base_rate_per_day * sample_length
 
         # Return the classifier
         return self
@@ -102,31 +89,23 @@ class BSLE(BaseEstimator):
         y : ndarray, shape (n_samples,)
             The probability of the sample belonging to the seizure class
         """
-        check_is_fitted(self)
+        check_is_fitted(self, ['hdpi_cutoff_value_', 'de_', 'p_E_'])
         X = self._validate_data(X)
         if samples_times is not None:
             assert len(X) == len(samples_times), f"error: length mismatch, {len(X)} != {len(samples_times)}"
 
-        log_likelihoods = self.outlier_de_.score_samples(X)
-        log_likelihoods_training = self.outlier_de_.score_samples(self.X_)
+        p_E = self.de_.score_samples(X)
+        # compute p-values from observed log-likelihoods based on training samples
+        P_E = np.array(PercentileOfScore(self.p_E_).pct(p_E)) / 100
 
-        
-        if samples_times is None:  # unsupervised
-            # compute p-values from observed log-likelihoods based on training samples
-            percentiles = np.array([percentileofscore(log_likelihoods_training, i) for i in log_likelihoods])
-            p_values = percentiles / 100
-            return p_values
-        else:   # weakly supervised
-            if self.prior_ is None:
-                raise AttributeError("self.prior_ is None. you should fit the estimator with prior events.")
-            else:
-                # compute p_values 
-                priors = np.array([self.prior_(t) for t in samples_times])
-                evidence = np.exp(self.outlier_de_.score_samples(X)) * priors + np.exp(self.outlier_de_.score_samples(X)) * (1 - priors)
-                posteriors = priors * np.exp(self.outlier_de_.score_samples(X)) / evidence
-                percentiles = np.array([percentileofscore(posteriors, i) for i in posteriors])
-                p_values = percentiles / 100
-                return p_values
+        # compute p_values
+        not_S = p_E >= self.hdpi_cutoff_value_
+        P_E_given_not_S = np.where(not_S, P_E, np.zeros_like(p_E))
+        P_S_given_t = self.prior_(samples_times)
+        P_not_S_given_t = 1 - P_S_given_t
+        P_not_S_given_E = np.where(not_S, P_E_given_not_S * P_not_S_given_t / P_E, np.zeros_like(p_E))
+        P_S_given_E = 1 - P_not_S_given_E
+        return P_S_given_E
 
     def predict(self, X):
         """ prediction for a classifier.

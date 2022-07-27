@@ -1,10 +1,12 @@
+from dataclasses import dataclass
 import numpy as np
 from numpy.random import default_rng
 
 from ieegpy.ieeg.auth import Session
 from ieegpy.ieeg.dataset import Dataset
-from msc.config import get_authentication
-from msc import config
+
+from .config_utils import get_authentication, config
+
 
 def count_nans(data):
     """return count of nan entries"""
@@ -44,6 +46,7 @@ def get_sample_times(N, mode, t_end=None) -> np.ndarray:
         times = np.array(rng.integers(0, config['t_max'], size=N))  # type: ignore
     elif mode == "online":
         assert t_end is not None
+        assert config['t_max'] <= t_end, f"error: {config['t_max']=} is not <= than {t_end=}"
         times = np.array(rng.integers(config['t_max'], t_end, size=N))  # type: ignore
     else:
         raise ValueError(f"{mode=} is unsupported")
@@ -62,3 +65,15 @@ def get_event_sample_times(ds, augment=False) -> np.ndarray:
 
 def get_event_times(dataset_id):
     pass
+
+@dataclass
+class EvalData:
+    train_X: np.ndarray
+    train_events: np.ndarray
+    test_X: np.ndarray
+    test_times: np.ndarray
+    test_y: np.ndarray
+
+
+def get_sample_rate_from_ds(ds):
+    return ds.get_time_series_details('LEFT_02').sample_rate

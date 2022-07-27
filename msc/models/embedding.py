@@ -138,7 +138,7 @@ class multiChannelEEGGPModel(gpytorch.models.ExactGP):
         )
         self.covar_module = gpytorch.kernels.MultitaskKernel(
             gpytorch.kernels.MaternKernel(1.5),
-            num_tasks=num_tasks, rank=1
+            num_tasks=num_tasks, rank=num_channels - 1
         )
 
     def forward(self, x):
@@ -198,7 +198,7 @@ class SingleSampleEEGGPModel(pl.LightningModule):
                 self.log(param_name, param.item())
             else:
                 for i in range(param.numel()):
-                    self.log(f"{param_name}[{i}]", param[i].item())
+                    self.log(f"{param_name}[{i}]", param.flatten()[i].item())
 
         return {'loss': loss}
 
